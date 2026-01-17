@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import (
-    BigInteger, Boolean, Integer, String, Text, DateTime, ForeignKey,
+    BigInteger, Boolean, Integer, Float, String, Text, DateTime, ForeignKey,
     CheckConstraint, UniqueConstraint, Index, func
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -10,6 +10,25 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
     pass
+
+
+class Camp(Base):
+    """A category/camp for grouping accounts by content analysis."""
+    __tablename__ = "camps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    slug: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    color: Mapped[str] = mapped_column(String(20), default="#3b82f6")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    keywords: Mapped[List["Keyword"]] = relationship("Keyword", back_populates="camp", cascade="all, delete-orphan")
+    account_scores: Mapped[List["AccountCampScore"]] = relationship("AccountCampScore", back_populates="camp", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<Camp '{self.name}'>"
 
 
 class Account(Base):
@@ -56,6 +75,7 @@ class Account(Base):
     # Relationships
     tweets: Mapped[List["Tweet"]] = relationship("Tweet", back_populates="account", cascade="all, delete-orphan")
     keyword_matches: Mapped[List["AccountKeywordMatch"]] = relationship("AccountKeywordMatch", back_populates="account", cascade="all, delete-orphan")
+    camp_scores: Mapped[List["AccountCampScore"]] = relationship("AccountCampScore", back_populates="account", cascade="all, delete-orphan")
     
     # Follower/following relationships
     followers: Mapped[List["Follow"]] = relationship(
@@ -132,19 +152,17 @@ class Keyword(Base):
     term: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     case_sensitive: Mapped[bool] = mapped_column(Boolean, default=False)
+    camp_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("camps.id", ondelete="CASCADE"))
+    weight: Mapped[float] = mapped_column(Float, default=1.0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    __table_args__ = (
-        CheckConstraint("type IN ('inclusion', 'exclusion')", name="check_keyword_type"),
-        UniqueConstraint("term", "type", name="uq_keywords_term_type"),
-    )
-
     # Relationships
+    camp: Mapped[Optional["Camp"]] = relationship("Camp", back_populates="keywords")
     account_matches: Mapped[List["AccountKeywordMatch"]] = relationship("AccountKeywordMatch", back_populates="keyword", cascade="all, delete-orphan")
     tweet_matches: Mapped[List["TweetKeywordMatch"]] = relationship("TweetKeywordMatch", back_populates="keyword", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
-        return f"<Keyword '{self.term}' ({self.type})>"
+        return f"<Keyword '{self.term}' camp={self.camp_id} weight={self.weight}>"
 
 
 class AccountKeywordMatch(Base):
@@ -175,3 +193,23 @@ class TweetKeywordMatch(Base):
 
     def __repr__(self) -> str:
         return f"<TweetKeywordMatch tweet={self.tweet_id} keyword={self.keyword_id}>"
+
+
+class AccountCampScore(Base):
+    """Stores the analysis result - how much an account belongs to a camp."""
+    __tablename__ = "account_camp_scores"
+
+    account_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
+    camp_id: Mapped[int] = mapped_column(Integer, ForeignKey("camps.id", ondelete="CASCADE"), primary_key=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    bio_score: Mapped[float] = mapped_column(Float, default=0.0)
+    tweet_score: Mapped[float] = mapped_column(Float, default=0.0)
+    match_details: Mapped[Optional[dict]] = mapped_column(JSONB)  # {"bio_matches": [...], "tweet_matches": [...]}
+    analyzed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    # Relationships
+    account: Mapped["Account"] = relationship("Account", back_populates="camp_scores")
+    camp: Mapped["Camp"] = relationship("Camp", back_populates="account_scores")
+
+    def __repr__(self) -> str:
+        return f"<AccountCampScore account={self.account_id} camp={self.camp_id} score={self.score}>"

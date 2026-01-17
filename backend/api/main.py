@@ -7,8 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from backend.db import get_db, Account, Tweet, Follow, Keyword
+from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore
 from backend.scraper import ScraperService
+from backend.analyzer import AnalyzerService
 from backend.api import schemas
 
 
@@ -228,3 +229,122 @@ def delete_keyword(keyword_id: int, db: Session = Depends(get_db)):
     db.delete(keyword)
     db.commit()
     return {"deleted": True, "id": keyword_id}
+
+
+# === Camps (Categories) ===
+
+@app.get("/api/camps", response_model=schemas.CampList)
+def list_camps(db: Session = Depends(get_db)):
+    """List all camps."""
+    camps = db.query(Camp).all()
+    return schemas.CampList(camps=camps, total=len(camps))
+
+
+@app.get("/api/camps/{slug}", response_model=schemas.CampDetail)
+def get_camp(slug: str, db: Session = Depends(get_db)):
+    """Get camp details including keywords."""
+    analyzer = AnalyzerService(db)
+    camp = analyzer.get_camp_by_slug(slug)
+    if not camp:
+        raise HTTPException(status_code=404, detail=f"Camp '{slug}' not found")
+    
+    keywords = analyzer.get_camp_keywords(camp.id)
+    return schemas.CampDetail(
+        id=camp.id,
+        name=camp.name,
+        slug=camp.slug,
+        description=camp.description,
+        color=camp.color,
+        created_at=camp.created_at,
+        keywords=[schemas.CampKeyword(id=k.id, term=k.term, weight=k.weight, case_sensitive=k.case_sensitive) for k in keywords],
+    )
+
+
+@app.get("/api/camps/{slug}/leaderboard", response_model=schemas.CampLeaderboard)
+def get_camp_leaderboard(slug: str, limit: int = Query(20, ge=1, le=100), db: Session = Depends(get_db)):
+    """Get top accounts for a camp by score."""
+    analyzer = AnalyzerService(db)
+    camp = analyzer.get_camp_by_slug(slug)
+    if not camp:
+        raise HTTPException(status_code=404, detail=f"Camp '{slug}' not found")
+    
+    leaderboard = analyzer.get_camp_leaderboard(camp.id, limit=limit)
+    entries = [
+        schemas.LeaderboardEntry(
+            rank=i,
+            account=score.account,
+            score=score.score,
+            bio_score=score.bio_score,
+            tweet_score=score.tweet_score,
+        )
+        for i, score in enumerate(leaderboard, 1)
+    ]
+    
+    return schemas.CampLeaderboard(camp=camp, entries=entries)
+
+
+@app.post("/api/camps/{slug}/keywords", response_model=schemas.CampKeyword)
+def add_keyword_to_camp(slug: str, request: schemas.KeywordAddRequest, db: Session = Depends(get_db)):
+    """Add a keyword to a camp."""
+    analyzer = AnalyzerService(db)
+    camp = analyzer.get_camp_by_slug(slug)
+    if not camp:
+        raise HTTPException(status_code=404, detail=f"Camp '{slug}' not found")
+    
+    keyword = analyzer.add_keyword_to_camp(
+        camp_id=camp.id,
+        term=request.term,
+        weight=request.weight,
+        case_sensitive=request.case_sensitive,
+    )
+    return schemas.CampKeyword(id=keyword.id, term=keyword.term, weight=keyword.weight, case_sensitive=keyword.case_sensitive)
+
+
+# === Analysis ===
+
+@app.post("/api/analyze", response_model=schemas.AnalyzeResponse)
+def analyze_accounts(request: schemas.AnalyzeRequest, db: Session = Depends(get_db)):
+    """Analyze accounts for camp membership."""
+    analyzer = AnalyzerService(db)
+    
+    if request.username:
+        # Analyze specific account
+        account = db.query(Account).filter(Account.username == request.username).first()
+        if not account:
+            raise HTTPException(status_code=404, detail=f"Account @{request.username} not found")
+        analyzer.analyze_and_save(account)
+        return schemas.AnalyzeResponse(analyzed=1, total_scores=len(analyzer.get_camps()))
+    else:
+        # Analyze all
+        stats = analyzer.analyze_all_accounts()
+        return schemas.AnalyzeResponse(**stats)
+
+
+@app.get("/api/accounts/{username}/analysis", response_model=schemas.AccountAnalysis)
+def get_account_analysis(username: str, db: Session = Depends(get_db)):
+    """Get camp analysis for an account."""
+    account = db.query(Account).filter(Account.username == username).first()
+    if not account:
+        raise HTTPException(status_code=404, detail=f"Account @{username} not found")
+    
+    analyzer = AnalyzerService(db)
+    scores = analyzer.get_account_scores(account.id)
+    
+    score_list = []
+    for score in scores:
+        camp = analyzer.get_camp(score.camp_id)
+        bio_matches = score.match_details.get("bio_matches", []) if score.match_details else []
+        tweet_matches = score.match_details.get("tweet_matches", []) if score.match_details else []
+        
+        score_list.append(schemas.AccountCampScoreBase(
+            camp_id=camp.id,
+            camp_name=camp.name,
+            camp_color=camp.color,
+            score=score.score,
+            bio_score=score.bio_score,
+            tweet_score=score.tweet_score,
+            bio_matches=[schemas.MatchDetail(**m) for m in bio_matches],
+            tweet_matches=[schemas.MatchDetail(**m) for m in tweet_matches],
+        ))
+    
+    return schemas.AccountAnalysis(account=account, scores=score_list)

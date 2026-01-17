@@ -1,5 +1,5 @@
 from .connection import engine, SessionLocal, get_db
-from .models import Base, Account, Follow, Tweet, Keyword, AccountKeywordMatch, TweetKeywordMatch
+from .models import Base, Account, Follow, Tweet, Keyword, AccountKeywordMatch, TweetKeywordMatch, Camp, AccountCampScore
 
 __all__ = [
     "engine",
@@ -12,4 +12,6 @@ __all__ = [
     "Keyword",
     "AccountKeywordMatch",
     "TweetKeywordMatch",
+    "Camp",
+    "AccountCampScore",
 ]

@@ -1,18 +1,26 @@
 #!/usr/bin/env python
 """
-CLI for OpenCCP scraper.
+CLI for OpenCCP scraper and analyzer.
 
 Usage:
     python -m backend.cli scrape anthonyronning
     python -m backend.cli list
     python -m backend.cli show anthonyronning
     python -m backend.cli graph
+    python -m backend.cli stats
+    
+    # Analysis commands
+    python -m backend.cli analyze              # Analyze all accounts
+    python -m backend.cli analyze anthonyronning  # Analyze specific account
+    python -m backend.cli camps                # List all camps
+    python -m backend.cli leaderboard ai-enthusiast  # Show camp leaderboard
 """
 
 import sys
 import json
 from backend.db import SessionLocal
 from backend.scraper import ScraperService
+from backend.analyzer import AnalyzerService
 
 
 def cmd_scrape(username: str):
@@ -125,13 +133,15 @@ def cmd_stats():
     """Show database stats."""
     db = SessionLocal()
     try:
-        from backend.db.models import Account, Tweet, Follow, Keyword
+        from backend.db.models import Account, Tweet, Follow, Keyword, Camp, AccountCampScore
         
         accounts = db.query(Account).count()
         seeds = db.query(Account).filter(Account.is_seed == True).count()
         tweets = db.query(Tweet).count()
         follows = db.query(Follow).count()
         keywords = db.query(Keyword).count()
+        camps = db.query(Camp).count()
+        scores = db.query(AccountCampScore).count()
         
         print("\nDATABASE STATS")
         print("=" * 30)
@@ -139,6 +149,105 @@ def cmd_stats():
         print(f"Tweets: {tweets}")
         print(f"Follow edges: {follows}")
         print(f"Keywords: {keywords}")
+        print(f"Camps: {camps}")
+        print(f"Camp scores: {scores}")
+    finally:
+        db.close()
+
+
+def cmd_analyze(username: str = None):
+    """Analyze accounts for camp membership."""
+    db = SessionLocal()
+    try:
+        analyzer = AnalyzerService(db)
+        
+        if username:
+            # Analyze specific account
+            scraper = ScraperService(db)
+            account = scraper.get_account(username)
+            if not account:
+                print(f"Account @{username} not found")
+                return
+            
+            print(f"\nAnalyzing @{username}...")
+            scores = analyzer.analyze_and_save(account)
+            
+            print(f"\n@{account.username} - CAMP ANALYSIS")
+            print("=" * 50)
+            
+            for camp_id, score in scores.items():
+                camp = analyzer.get_camp(camp_id)
+                print(f"\n{camp.name} (score: {score.score:.1f})")
+                print(f"  Bio score: {score.bio_score:.1f}")
+                print(f"  Tweet score: {score.tweet_score:.1f}")
+                
+                if score.match_details:
+                    if score.match_details.get("bio_matches"):
+                        print("  Bio matches:")
+                        for m in score.match_details["bio_matches"]:
+                            print(f"    - '{m['term']}' x{m['count']} (weight: {m['weight']})")
+                    if score.match_details.get("tweet_matches"):
+                        print("  Tweet matches:")
+                        for m in score.match_details["tweet_matches"][:5]:
+                            print(f"    - '{m['term']}' x{m['count']} (weight: {m['weight']})")
+        else:
+            # Analyze all accounts
+            print("\nAnalyzing all accounts...")
+            stats = analyzer.analyze_all_accounts()
+            print(f"\nDone! Analyzed {stats['analyzed']} accounts, created {stats['total_scores']} camp scores")
+    finally:
+        db.close()
+
+
+def cmd_camps():
+    """List all camps and their keywords."""
+    db = SessionLocal()
+    try:
+        analyzer = AnalyzerService(db)
+        camps = analyzer.get_camps()
+        
+        print("\nCAMPS")
+        print("=" * 50)
+        
+        for camp in camps:
+            keywords = analyzer.get_camp_keywords(camp.id)
+            print(f"\n{camp.name} ({camp.slug}) - {camp.color}")
+            print(f"  {camp.description or 'No description'}")
+            print(f"  Keywords ({len(keywords)}):")
+            for kw in keywords[:10]:
+                print(f"    - '{kw.term}' (weight: {kw.weight})")
+            if len(keywords) > 10:
+                print(f"    ... and {len(keywords) - 10} more")
+    finally:
+        db.close()
+
+
+def cmd_leaderboard(camp_slug: str):
+    """Show top accounts for a camp."""
+    db = SessionLocal()
+    try:
+        analyzer = AnalyzerService(db)
+        camp = analyzer.get_camp_by_slug(camp_slug)
+        
+        if not camp:
+            print(f"Camp '{camp_slug}' not found")
+            print("Available camps:")
+            for c in analyzer.get_camps():
+                print(f"  - {c.slug}")
+            return
+        
+        leaderboard = analyzer.get_camp_leaderboard(camp.id, limit=20)
+        
+        print(f"\n{camp.name.upper()} LEADERBOARD")
+        print("=" * 50)
+        
+        if not leaderboard:
+            print("No accounts with scores > 0. Run 'analyze' first!")
+            return
+        
+        for i, score in enumerate(leaderboard, 1):
+            account = score.account
+            print(f"{i:2}. @{account.username:<20} score: {score.score:>6.1f}  (bio: {score.bio_score:.1f}, tweets: {score.tweet_score:.1f})")
     finally:
         db.close()
 
@@ -171,6 +280,19 @@ def main():
     
     elif cmd == "stats":
         cmd_stats()
+    
+    elif cmd == "analyze":
+        username = sys.argv[2] if len(sys.argv) > 2 else None
+        cmd_analyze(username)
+    
+    elif cmd == "camps":
+        cmd_camps()
+    
+    elif cmd == "leaderboard":
+        if len(sys.argv) < 3:
+            print("Usage: python -m backend.cli leaderboard <camp-slug>")
+            sys.exit(1)
+        cmd_leaderboard(sys.argv[2])
     
     else:
         print(f"Unknown command: {cmd}")

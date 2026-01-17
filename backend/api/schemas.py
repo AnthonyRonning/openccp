@@ -153,3 +153,86 @@ class KeywordCreate(BaseModel):
 class KeywordList(BaseModel):
     keywords: List[KeywordBase]
     total: int
+
+
+# === Camp Schemas ===
+
+class CampBase(BaseModel):
+    id: int
+    name: str
+    slug: str
+    description: Optional[str] = None
+    color: str = "#3b82f6"
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CampKeyword(BaseModel):
+    id: int
+    term: str
+    weight: float = 1.0
+    case_sensitive: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CampDetail(CampBase):
+    keywords: List[CampKeyword] = []
+
+
+class CampList(BaseModel):
+    camps: List[CampBase]
+    total: int
+
+
+class KeywordAddRequest(BaseModel):
+    term: str
+    weight: float = 1.0
+    case_sensitive: bool = False
+
+
+# === Analysis Schemas ===
+
+class MatchDetail(BaseModel):
+    term: str
+    count: int
+    weight: float
+
+
+class AccountCampScoreBase(BaseModel):
+    camp_id: int
+    camp_name: str
+    camp_color: str
+    score: float
+    bio_score: float
+    tweet_score: float
+    bio_matches: List[MatchDetail] = []
+    tweet_matches: List[MatchDetail] = []
+
+
+class AccountAnalysis(BaseModel):
+    account: AccountBase
+    scores: List[AccountCampScoreBase]
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    account: AccountBase
+    score: float
+    bio_score: float
+    tweet_score: float
+
+
+class CampLeaderboard(BaseModel):
+    camp: CampBase
+    entries: List[LeaderboardEntry]
+
+
+class AnalyzeRequest(BaseModel):
+    username: Optional[str] = None  # None = analyze all
+
+
+class AnalyzeResponse(BaseModel):
+    analyzed: int
+    total_scores: int
