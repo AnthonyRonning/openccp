@@ -285,17 +285,17 @@ export default function CampDetail() {
                   key={kw.id}
                   className="flex items-center justify-between p-2 rounded bg-gray-800/50 group"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-white">{kw.term}</span>
-                    {kw.expected_sentiment !== 'any' && (
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        kw.expected_sentiment === 'positive' 
-                          ? 'bg-green-900/50 text-green-400' 
-                          : 'bg-red-900/50 text-red-400'
-                      }`}>
-                        {kw.expected_sentiment === 'positive' ? '+' : '-'}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-white truncate">{kw.term}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${
+                      kw.expected_sentiment === 'positive' 
+                        ? 'bg-green-900/50 text-green-400' 
+                        : kw.expected_sentiment === 'negative'
+                        ? 'bg-red-900/50 text-red-400'
+                        : 'bg-gray-700 text-gray-400'
+                    }`}>
+                      {kw.expected_sentiment === 'positive' ? 'pos' : kw.expected_sentiment === 'negative' ? 'neg' : 'any'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-400">×{kw.weight}</span>
