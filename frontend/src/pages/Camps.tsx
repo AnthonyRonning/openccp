@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { fetchCamps, fetchCampLeaderboard, analyzeAccounts, createCamp } from '../api';
 import { useState } from 'react';
 
-function CampCard({ camp }: { camp: { id: number; name: string; slug: string; description: string | null; color: string } }) {
+function CampCard({ camp }: { camp: { id: number; name: string; description: string | null; color: string } }) {
   const { data: leaderboard } = useQuery({
-    queryKey: ['leaderboard', camp.slug],
-    queryFn: () => fetchCampLeaderboard(camp.slug),
+    queryKey: ['leaderboard', camp.id],
+    queryFn: () => fetchCampLeaderboard(camp.id),
   });
 
   return (
@@ -44,10 +44,10 @@ function CampCard({ camp }: { camp: { id: number; name: string; slug: string; de
         )}
         
         <Link
-          to={`/camps/${camp.slug}`}
+          to={`/camps/${camp.id}`}
           className="block mt-4 text-center text-sm text-blue-400 hover:text-blue-300"
         >
-          Manage keywords & view full leaderboard →
+          Manage keywords →
         </Link>
       </div>
     </div>
@@ -59,7 +59,7 @@ const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'
 export default function Camps() {
   const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newCamp, setNewCamp] = useState({ name: '', slug: '', description: '', color: COLORS[0] });
+  const [newCamp, setNewCamp] = useState({ name: '', description: '', color: COLORS[0] });
 
   const { data, isLoading } = useQuery({
     queryKey: ['camps'],
@@ -78,19 +78,15 @@ export default function Camps() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['camps'] });
       setShowCreateForm(false);
-      setNewCamp({ name: '', slug: '', description: '', color: COLORS[0] });
+      setNewCamp({ name: '', description: '', color: COLORS[0] });
     },
   });
 
   const handleCreateCamp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newCamp.name && newCamp.slug) {
+    if (newCamp.name) {
       createMutation.mutate(newCamp);
     }
-  };
-
-  const generateSlug = (name: string) => {
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   };
 
   if (isLoading) return <div className="text-gray-400">Loading...</div>;
@@ -121,38 +117,23 @@ export default function Camps() {
         </div>
       </div>
 
-      {/* Create Camp Form */}
       {showCreateForm && (
         <form onSubmit={handleCreateCamp} className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-4">
           <h2 className="text-lg font-semibold text-white">Create New Camp</h2>
           
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Name</label>
-              <input
-                type="text"
-                value={newCamp.name}
-                onChange={(e) => {
-                  setNewCamp({ ...newCamp, name: e.target.value, slug: generateSlug(e.target.value) });
-                }}
-                placeholder="e.g., Republican"
-                className="w-full px-3 py-2 rounded bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Slug (URL-friendly)</label>
-              <input
-                type="text"
-                value={newCamp.slug}
-                onChange={(e) => setNewCamp({ ...newCamp, slug: e.target.value })}
-                placeholder="e.g., republican"
-                className="w-full px-3 py-2 rounded bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-              />
-            </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Name</label>
+            <input
+              type="text"
+              value={newCamp.name}
+              onChange={(e) => setNewCamp({ ...newCamp, name: e.target.value })}
+              placeholder="e.g., Republican, Pro-Crypto, Sports Fan"
+              className="w-full px-3 py-2 rounded bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
           </div>
           
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Description</label>
+            <label className="block text-sm text-gray-400 mb-1">Description (optional)</label>
             <input
               type="text"
               value={newCamp.description}
@@ -180,7 +161,7 @@ export default function Camps() {
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={!newCamp.name || !newCamp.slug || createMutation.isPending}
+              disabled={!newCamp.name || createMutation.isPending}
               className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 disabled:bg-gray-700 text-white font-medium"
             >
               {createMutation.isPending ? 'Creating...' : 'Create Camp'}
@@ -193,10 +174,6 @@ export default function Camps() {
               Cancel
             </button>
           </div>
-          
-          {createMutation.isError && (
-            <p className="text-red-400 text-sm">Failed to create camp. Slug might already exist.</p>
-          )}
         </form>
       )}
 
@@ -210,7 +187,7 @@ export default function Camps() {
 
       {data?.camps.length === 0 ? (
         <div className="bg-gray-900 rounded-xl p-8 border border-gray-800 text-center">
-          <p className="text-gray-400 mb-4">No camps created yet. Create your first camp to start categorizing accounts!</p>
+          <p className="text-gray-400 mb-4">No camps yet. Create your first camp to start categorizing accounts!</p>
           <button
             onClick={() => setShowCreateForm(true)}
             className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium"
@@ -225,16 +202,6 @@ export default function Camps() {
           ))}
         </div>
       )}
-
-      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-        <h2 className="text-lg font-semibold text-white mb-3">How it works</h2>
-        <ul className="space-y-2 text-gray-400 text-sm">
-          <li>1. <strong>Create camps</strong> for categories you want to track (e.g., "Republican", "Democrat")</li>
-          <li>2. <strong>Add keywords</strong> to each camp with weights (higher weight = stronger signal)</li>
-          <li>3. <strong>Run analysis</strong> to scan all accounts' bios and tweets for matches</li>
-          <li>4. <strong>View leaderboards</strong> to see which accounts score highest in each camp</li>
-        </ul>
-      </div>
     </div>
   );
 }

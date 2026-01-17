@@ -17,8 +17,7 @@ class Camp(Base):
     __tablename__ = "camps"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    slug: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     color: Mapped[str] = mapped_column(String(20), default="#3b82f6")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

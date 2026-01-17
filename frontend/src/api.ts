@@ -105,7 +105,6 @@ export async function scrapeAccount(username: string): Promise<{ account: Accoun
 export interface Camp {
   id: number;
   name: string;
-  slug: string;
   description: string | null;
   color: string;
 }
@@ -162,13 +161,13 @@ export async function fetchCamps(): Promise<{ camps: Camp[]; total: number }> {
   return res.json();
 }
 
-export async function fetchCamp(slug: string): Promise<CampDetail> {
-  const res = await fetch(`${API_BASE}/camps/${slug}`);
+export async function fetchCamp(id: number): Promise<CampDetail> {
+  const res = await fetch(`${API_BASE}/camps/${id}`);
   return res.json();
 }
 
-export async function fetchCampLeaderboard(slug: string): Promise<CampLeaderboard> {
-  const res = await fetch(`${API_BASE}/camps/${slug}/leaderboard`);
+export async function fetchCampLeaderboard(id: number): Promise<CampLeaderboard> {
+  const res = await fetch(`${API_BASE}/camps/${id}/leaderboard`);
   return res.json();
 }
 
@@ -187,7 +186,7 @@ export async function analyzeAccounts(username?: string): Promise<{ analyzed: nu
 }
 
 // Camp CRUD
-export async function createCamp(data: { name: string; slug: string; description?: string; color?: string }): Promise<Camp> {
+export async function createCamp(data: { name: string; description?: string; color?: string }): Promise<Camp> {
   const res = await fetch(`${API_BASE}/camps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -197,8 +196,8 @@ export async function createCamp(data: { name: string; slug: string; description
   return res.json();
 }
 
-export async function updateCamp(slug: string, data: { name?: string; description?: string; color?: string }): Promise<Camp> {
-  const res = await fetch(`${API_BASE}/camps/${slug}`, {
+export async function updateCamp(id: number, data: { name?: string; description?: string; color?: string }): Promise<Camp> {
+  const res = await fetch(`${API_BASE}/camps/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -206,13 +205,13 @@ export async function updateCamp(slug: string, data: { name?: string; descriptio
   return res.json();
 }
 
-export async function deleteCamp(slug: string): Promise<void> {
-  await fetch(`${API_BASE}/camps/${slug}`, { method: 'DELETE' });
+export async function deleteCamp(id: number): Promise<void> {
+  await fetch(`${API_BASE}/camps/${id}`, { method: 'DELETE' });
 }
 
 // Keyword CRUD
-export async function addKeyword(campSlug: string, data: { term: string; weight?: number; case_sensitive?: boolean }): Promise<CampKeyword> {
-  const res = await fetch(`${API_BASE}/camps/${campSlug}/keywords`, {
+export async function addKeyword(campId: number, data: { term: string; weight?: number; case_sensitive?: boolean }): Promise<CampKeyword> {
+  const res = await fetch(`${API_BASE}/camps/${campId}/keywords`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -220,15 +219,6 @@ export async function addKeyword(campSlug: string, data: { term: string; weight?
   return res.json();
 }
 
-export async function updateKeyword(campSlug: string, keywordId: number, data: { term?: string; weight?: number }): Promise<CampKeyword> {
-  const res = await fetch(`${API_BASE}/camps/${campSlug}/keywords/${keywordId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return res.json();
-}
-
-export async function deleteKeyword(campSlug: string, keywordId: number): Promise<void> {
-  await fetch(`${API_BASE}/camps/${campSlug}/keywords/${keywordId}`, { method: 'DELETE' });
+export async function deleteKeyword(campId: number, keywordId: number): Promise<void> {
+  await fetch(`${API_BASE}/camps/${campId}/keywords/${keywordId}`, { method: 'DELETE' });
 }

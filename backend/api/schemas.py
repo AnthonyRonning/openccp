@@ -160,7 +160,6 @@ class KeywordList(BaseModel):
 class CampBase(BaseModel):
     id: int
     name: str
-    slug: str
     description: Optional[str] = None
     color: str = "#3b82f6"
     created_at: Optional[datetime] = None
@@ -200,7 +199,6 @@ class KeywordUpdateRequest(BaseModel):
 
 class CampCreateRequest(BaseModel):
     name: str
-    slug: str
     description: Optional[str] = None
     color: str = "#3b82f6"
 

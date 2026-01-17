@@ -57,7 +57,7 @@ export default function App() {
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/accounts/:username" element={<AccountDetail />} />
             <Route path="/camps" element={<Camps />} />
-            <Route path="/camps/:slug" element={<CampDetail />} />
+            <Route path="/camps/:id" element={<CampDetail />} />
             <Route path="/graph" element={<Graph />} />
             <Route path="/scrape" element={<Scrape />} />
           </Routes>
