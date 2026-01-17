@@ -1,0 +1,155 @@
+"""
+Pydantic schemas for API request/response models.
+"""
+
+from datetime import datetime
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, ConfigDict
+
+
+# === Account Schemas ===
+
+class AccountBase(BaseModel):
+    id: int
+    username: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    url: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    verified: bool = False
+    verified_type: Optional[str] = None
+    followers_count: int = 0
+    following_count: int = 0
+    tweet_count: int = 0
+    like_count: int = 0
+    is_seed: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AccountDetail(AccountBase):
+    pinned_tweet_id: Optional[int] = None
+    protected: bool = False
+    listed_count: int = 0
+    media_count: int = 0
+    entities: Optional[Dict] = None
+    twitter_created_at: Optional[datetime] = None
+    scrape_status: str = "pending"
+    scraped_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class AccountList(BaseModel):
+    accounts: List[AccountBase]
+    total: int
+
+
+# === Tweet Schemas ===
+
+class TweetBase(BaseModel):
+    id: int
+    account_id: int
+    text: str
+    lang: Optional[str] = None
+    twitter_created_at: Optional[datetime] = None
+    retweet_count: int = 0
+    reply_count: int = 0
+    like_count: int = 0
+    quote_count: int = 0
+    impression_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TweetDetail(TweetBase):
+    conversation_id: Optional[int] = None
+    in_reply_to_user_id: Optional[int] = None
+    referenced_tweets: Optional[List[Dict]] = None
+    bookmark_count: int = 0
+    entities: Optional[Dict] = None
+    scraped_at: Optional[datetime] = None
+
+
+class TweetList(BaseModel):
+    tweets: List[TweetBase]
+    total: int
+
+
+# === Graph Schemas ===
+
+class GraphNode(BaseModel):
+    id: str
+    username: str
+    name: Optional[str] = None
+    is_seed: bool = False
+    followers_count: int = 0
+    following_count: int = 0
+    profile_image_url: Optional[str] = None
+
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+
+
+class GraphData(BaseModel):
+    nodes: List[GraphNode]
+    edges: List[GraphEdge]
+
+
+# === Stats Schemas ===
+
+class StatsResponse(BaseModel):
+    accounts: int
+    seeds: int
+    tweets: int
+    follows: int
+    keywords: int
+
+
+# === Scrape Schemas ===
+
+class ScrapeRequest(BaseModel):
+    username: str
+    include_tweets: bool = True
+    include_following: bool = True
+    include_followers: bool = True
+
+
+class ScrapeStats(BaseModel):
+    account_scraped: bool
+    tweets_added: int
+    following_added: int
+    followers_added: int
+    connections_scraped: int
+    errors: List[str]
+
+
+class ScrapeResponse(BaseModel):
+    account: Optional[AccountBase] = None
+    stats: ScrapeStats
+
+
+# === Keyword Schemas ===
+
+class KeywordBase(BaseModel):
+    id: int
+    term: str
+    type: str  # 'inclusion' or 'exclusion'
+    case_sensitive: bool = False
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class KeywordCreate(BaseModel):
+    term: str
+    type: str  # 'inclusion' or 'exclusion'
+    case_sensitive: bool = False
+
+
+class KeywordList(BaseModel):
+    keywords: List[KeywordBase]
+    total: int
