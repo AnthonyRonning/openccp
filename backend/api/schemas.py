@@ -331,3 +331,35 @@ class SummaryRequest(BaseModel):
 class SummaryResponse(BaseModel):
     username: str
     topics: Dict[str, TopicSentiment]
+
+
+# === Topic Schemas (Configurable) ===
+
+class TopicBase(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    enabled: bool = True
+    sort_order: int = 0
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TopicList(BaseModel):
+    topics: List[TopicBase]
+    total: int
+
+
+class TopicCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    enabled: bool = True
+    sort_order: int = 0
+
+
+class TopicUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    enabled: Optional[bool] = None
+    sort_order: Optional[int] = None

@@ -12,6 +12,21 @@ class Base(DeclarativeBase):
     pass
 
 
+class Topic(Base):
+    """Configurable topics for account summary analysis."""
+    __tablename__ = "topics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self) -> str:
+        return f"<Topic '{self.name}'>"
+
+
 class Camp(Base):
     """A category/camp for grouping accounts by content analysis."""
     __tablename__ = "camps"

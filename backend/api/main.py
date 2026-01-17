@@ -7,9 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore
+from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore, Topic
 from backend.scraper import ScraperService
-from backend.analyzer import AnalyzerService, SummaryService, DEFAULT_TOPICS
+from backend.analyzer import AnalyzerService, SummaryService
 from backend.api import schemas
 
 
@@ -506,29 +506,115 @@ def get_camp_tweets_with_sentiment(camp_id: int, limit: int = Query(20, ge=1, le
     return tweets
 
 
+# === Topics (Configurable) ===
+
+@app.get("/api/topics", response_model=schemas.TopicList)
+def list_topics(
+    enabled_only: bool = Query(False, description="Only return enabled topics"),
+    db: Session = Depends(get_db),
+):
+    """List all topics for summary generation."""
+    query = db.query(Topic).order_by(Topic.sort_order, Topic.name)
+    if enabled_only:
+        query = query.filter(Topic.enabled == True)
+    topics = query.all()
+    return schemas.TopicList(topics=topics, total=len(topics))
+
+
+@app.post("/api/topics", response_model=schemas.TopicBase)
+def create_topic(request: schemas.TopicCreateRequest, db: Session = Depends(get_db)):
+    """Create a new topic."""
+    existing = db.query(Topic).filter(Topic.name == request.name).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Topic '{request.name}' already exists")
+    
+    topic = Topic(
+        name=request.name,
+        description=request.description,
+        enabled=request.enabled,
+        sort_order=request.sort_order,
+    )
+    db.add(topic)
+    db.commit()
+    db.refresh(topic)
+    return topic
+
+
+@app.get("/api/topics/{topic_id}", response_model=schemas.TopicBase)
+def get_topic(topic_id: int, db: Session = Depends(get_db)):
+    """Get a topic by ID."""
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail=f"Topic {topic_id} not found")
+    return topic
+
+
+@app.put("/api/topics/{topic_id}", response_model=schemas.TopicBase)
+def update_topic(topic_id: int, request: schemas.TopicUpdateRequest, db: Session = Depends(get_db)):
+    """Update a topic."""
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail=f"Topic {topic_id} not found")
+    
+    if request.name is not None:
+        # Check for duplicate name
+        existing = db.query(Topic).filter(Topic.name == request.name, Topic.id != topic_id).first()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"Topic '{request.name}' already exists")
+        topic.name = request.name
+    if request.description is not None:
+        topic.description = request.description
+    if request.enabled is not None:
+        topic.enabled = request.enabled
+    if request.sort_order is not None:
+        topic.sort_order = request.sort_order
+    
+    db.commit()
+    db.refresh(topic)
+    return topic
+
+
+@app.delete("/api/topics/{topic_id}")
+def delete_topic(topic_id: int, db: Session = Depends(get_db)):
+    """Delete a topic."""
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail=f"Topic {topic_id} not found")
+    
+    db.delete(topic)
+    db.commit()
+    return {"deleted": True, "id": topic_id}
+
+
 # === AI Summary ===
-
-@app.get("/api/topics")
-def get_default_topics():
-    """Get the default list of topics for summary generation."""
-    return {"topics": DEFAULT_TOPICS}
-
 
 @app.post("/api/accounts/{username}/summary", response_model=schemas.SummaryResponse)
 def generate_account_summary(
     username: str,
     request: schemas.SummaryRequest,
+    db: Session = Depends(get_db),
 ):
     """Generate an AI summary of an account's positions on various topics.
 
     Uses xAI's x_search tool to search tweets directly from X - no need
     to have the account scraped in our database first.
+    
+    If no topics provided in request, uses enabled topics from database.
     """
     try:
+        # Get topics from request or database
+        topics = request.topics
+        if not topics:
+            db_topics = db.query(Topic).filter(Topic.enabled == True).order_by(Topic.sort_order).all()
+            topics = [t.name for t in db_topics]
+        
+        if not topics:
+            raise HTTPException(status_code=400, detail="No topics available. Add topics first.")
+        
         summary_service = SummaryService()
         result = summary_service.generate_summary(
             username=username,
-            topics=request.topics,
+            topics=topics,
         )
 
         # Parse the result into the expected format

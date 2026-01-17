@@ -4,26 +4,14 @@ AI-powered account summary generation using xAI (Grok) with x_search tool.
 
 import os
 import json
-from typing import Optional
+from typing import Optional, List
 
 from xai_sdk import Client
 from xai_sdk.chat import user
 from xai_sdk.tools import x_search
 
 
-# Default topics for analysis - can be customized per request
-DEFAULT_TOPICS = [
-    "Bitcoin",
-    "Freedom of speech",
-    "Government surveillance",
-    "Privacy tools",
-    "Open source software",
-    "Decentralization",
-    "Censorship",
-]
-
-
-def build_prompt(username: str, topics: list[str]) -> str:
+def build_prompt(username: str, topics: List[str]) -> str:
     """Build the analysis prompt for xAI."""
     topic_list = "\n".join(f"- {t}" for t in topics)
 
@@ -65,12 +53,11 @@ class SummaryService:
     def generate_summary(
         self,
         username: str,
-        topics: Optional[list[str]] = None,
+        topics: List[str],
     ) -> dict:
         """Generate an AI summary for an account by searching their tweets."""
-
-        if topics is None:
-            topics = DEFAULT_TOPICS
+        if not topics:
+            raise ValueError("Topics list cannot be empty")
 
         prompt = build_prompt(username, topics)
 
