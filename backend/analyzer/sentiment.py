@@ -71,7 +71,7 @@ class SentimentAnalyzer:
         
         # Get all unique keyword terms across all camps
         keywords = self.db.query(Keyword).all()
-        terms = list(set([k.term.lower() for k in keywords]))
+        terms = list(set([k.term for k in keywords]))
         
         if not terms:
             return []
@@ -83,12 +83,13 @@ class SentimentAnalyzer:
             .all()
         )
         
-        # Filter to tweets containing at least one keyword
+        # Filter to tweets containing at least one keyword (word boundary match)
         matching_tweets = []
         for tweet in tweets:
-            text_lower = tweet.text.lower()
             for term in terms:
-                if term.lower() in text_lower:
+                # Use word boundaries to avoid false positives like "again" matching "AI"
+                pattern = r'\b' + re.escape(term) + r'\b'
+                if re.search(pattern, tweet.text, re.IGNORECASE):
                     matching_tweets.append(tweet)
                     break
         

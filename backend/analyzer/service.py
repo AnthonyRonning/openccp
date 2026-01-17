@@ -25,6 +25,8 @@ class AnalyzerService:
         Find all keyword matches in text.
         Returns list of (keyword, count) tuples.
         
+        Uses word boundary matching to avoid false positives like "again" matching "AI".
+        
         If sentiment is provided, only returns keywords where expected_sentiment matches
         (or expected_sentiment is 'any').
         """
@@ -33,7 +35,9 @@ class AnalyzerService:
 
         matches = []
         for kw in keywords:
-            pattern = re.escape(kw.term)
+            # Use word boundaries to avoid partial matches
+            # \b matches word boundaries (start/end of word)
+            pattern = r'\b' + re.escape(kw.term) + r'\b'
             flags = 0 if kw.case_sensitive else re.IGNORECASE
             found = re.findall(pattern, text, flags)
             if found:
