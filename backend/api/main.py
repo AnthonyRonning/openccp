@@ -361,17 +361,28 @@ def add_keyword_to_camp(camp_id: int, request: schemas.KeywordAddRequest, db: Se
     if not camp:
         raise HTTPException(status_code=404, detail=f"Camp {camp_id} not found")
     
+    # Validate expected_sentiment
+    if request.expected_sentiment not in ("positive", "negative", "any"):
+        raise HTTPException(status_code=400, detail="expected_sentiment must be 'positive', 'negative', or 'any'")
+    
     keyword = Keyword(
         term=request.term,
         type="signal",
         camp_id=camp.id,
         weight=request.weight,
         case_sensitive=request.case_sensitive,
+        expected_sentiment=request.expected_sentiment,
     )
     db.add(keyword)
     db.commit()
     db.refresh(keyword)
-    return schemas.CampKeyword(id=keyword.id, term=keyword.term, weight=keyword.weight, case_sensitive=keyword.case_sensitive)
+    return schemas.CampKeyword(
+        id=keyword.id, 
+        term=keyword.term, 
+        weight=keyword.weight, 
+        case_sensitive=keyword.case_sensitive,
+        expected_sentiment=keyword.expected_sentiment,
+    )
 
 
 @app.delete("/api/camps/{camp_id}/keywords/{keyword_id}")

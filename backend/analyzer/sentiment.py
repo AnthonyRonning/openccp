@@ -66,22 +66,33 @@ class SentimentAnalyzer:
         )
 
     def get_all_unanalyzed_tweets(self, limit: int = 100) -> List[Tweet]:
-        """Get all tweets that have keyword matches but no sentiment."""
-        tweet_ids = [
-            m.tweet_id for m in 
-            self.db.query(TweetKeywordMatch).distinct(TweetKeywordMatch.tweet_id).all()
-        ]
+        """Get all tweets that contain any keyword term but no sentiment."""
+        import re
         
-        if not tweet_ids:
+        # Get all unique keyword terms across all camps
+        keywords = self.db.query(Keyword).all()
+        terms = list(set([k.term.lower() for k in keywords]))
+        
+        if not terms:
             return []
         
-        return (
+        # Get tweets without sentiment
+        tweets = (
             self.db.query(Tweet)
-            .filter(Tweet.id.in_(tweet_ids))
             .filter(Tweet.sentiment.is_(None))
-            .limit(limit)
             .all()
         )
+        
+        # Filter to tweets containing at least one keyword
+        matching_tweets = []
+        for tweet in tweets:
+            text_lower = tweet.text.lower()
+            for term in terms:
+                if term.lower() in text_lower:
+                    matching_tweets.append(tweet)
+                    break
+        
+        return matching_tweets[:limit]
 
     def _build_prompt(self, tweets: List[Tweet], camp: Optional[Camp] = None) -> str:
         """Build the analysis prompt for a batch of tweets."""

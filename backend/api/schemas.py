@@ -172,6 +172,7 @@ class CampKeyword(BaseModel):
     term: str
     weight: float = 1.0
     case_sensitive: bool = False
+    expected_sentiment: str = "any"  # positive, negative, any
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -189,6 +190,7 @@ class KeywordAddRequest(BaseModel):
     term: str
     weight: float = 1.0
     case_sensitive: bool = False
+    expected_sentiment: str = "any"  # positive, negative, any
 
 
 class KeywordUpdateRequest(BaseModel):

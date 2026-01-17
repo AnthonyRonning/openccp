@@ -158,6 +158,7 @@ class Keyword(Base):
     case_sensitive: Mapped[bool] = mapped_column(Boolean, default=False)
     camp_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("camps.id", ondelete="CASCADE"))
     weight: Mapped[float] = mapped_column(Float, default=1.0)
+    expected_sentiment: Mapped[str] = mapped_column(String(20), default="any")  # positive, negative, any
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

@@ -20,10 +20,13 @@ class AnalyzerService:
     def __init__(self, db: Session):
         self.db = db
 
-    def _find_matches(self, text: str, keywords: List[Keyword]) -> List[Tuple[Keyword, int]]:
+    def _find_matches(self, text: str, keywords: List[Keyword], sentiment: str = None) -> List[Tuple[Keyword, int]]:
         """
         Find all keyword matches in text.
         Returns list of (keyword, count) tuples.
+        
+        If sentiment is provided, only returns keywords where expected_sentiment matches
+        (or expected_sentiment is 'any').
         """
         if not text:
             return []
@@ -34,6 +37,10 @@ class AnalyzerService:
             flags = 0 if kw.case_sensitive else re.IGNORECASE
             found = re.findall(pattern, text, flags)
             if found:
+                # Check sentiment filter
+                if sentiment and kw.expected_sentiment != "any":
+                    if kw.expected_sentiment != sentiment:
+                        continue  # Sentiment doesn't match expectation, skip
                 matches.append((kw, len(found)))
         return matches
 
@@ -45,6 +52,9 @@ class AnalyzerService:
         """
         Analyze a single account across all camps.
         Returns dict of camp_id -> analysis results.
+        
+        For tweets with sentiment analyzed, only counts keywords where
+        expected_sentiment matches the tweet's actual sentiment.
         """
         camps = self.db.query(Camp).all()
         results = {}
@@ -55,23 +65,26 @@ class AnalyzerService:
             if not keywords:
                 continue
 
-            # Analyze bio
-            bio_matches = self._find_matches(account.description or "", keywords)
+            # Analyze bio (no sentiment for bio, use 'any' keywords only or all)
+            # For bio, we check keywords that expect 'any' sentiment OR we use a neutral approach
+            bio_matches = self._find_matches(account.description or "", keywords, sentiment=None)
             bio_score = self._compute_score(bio_matches) * 2  # Bio gets 2x weight
 
             # Analyze each tweet individually and track matches
+            # Pass tweet's sentiment to filter keywords by expected_sentiment
             tweet_score = 0.0
             tweet_matches_agg = {}
             matched_tweet_ids = []
             
             for tweet in tweets:
-                matches = self._find_matches(tweet.text, keywords)
+                # Pass tweet sentiment to filter by expected_sentiment
+                matches = self._find_matches(tweet.text, keywords, sentiment=tweet.sentiment)
                 if matches:
                     matched_tweet_ids.append((tweet.id, matches))
                     for kw, count in matches:
                         tweet_score += kw.weight * count
                         if kw.term not in tweet_matches_agg:
-                            tweet_matches_agg[kw.term] = {"term": kw.term, "count": 0, "weight": kw.weight}
+                            tweet_matches_agg[kw.term] = {"term": kw.term, "count": 0, "weight": kw.weight, "expected_sentiment": kw.expected_sentiment}
                         tweet_matches_agg[kw.term]["count"] += count
 
             total_score = bio_score + tweet_score
