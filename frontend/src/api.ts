@@ -114,6 +114,7 @@ export interface CampKeyword {
   term: string;
   weight: number;
   case_sensitive: boolean;
+  expected_sentiment: 'positive' | 'negative' | 'any';
 }
 
 export interface CampDetail extends Camp {
@@ -233,7 +234,7 @@ export async function deleteCamp(id: number): Promise<void> {
 }
 
 // Keyword CRUD
-export async function addKeyword(campId: number, data: { term: string; weight?: number; case_sensitive?: boolean }): Promise<CampKeyword> {
+export async function addKeyword(campId: number, data: { term: string; weight?: number; case_sensitive?: boolean; expected_sentiment?: 'positive' | 'negative' | 'any' }): Promise<CampKeyword> {
   const res = await fetch(`${API_BASE}/camps/${campId}/keywords`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

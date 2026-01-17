@@ -11,6 +11,7 @@ export default function CampDetail() {
   
   const [newKeyword, setNewKeyword] = useState('');
   const [newWeight, setNewWeight] = useState('1.0');
+  const [newSentiment, setNewSentiment] = useState<'positive' | 'negative' | 'any'>('any');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'tweets'>('leaderboard');
 
@@ -33,11 +34,12 @@ export default function CampDetail() {
   });
 
   const addKeywordMutation = useMutation({
-    mutationFn: (data: { term: string; weight: number }) => addKeyword(campId, data),
+    mutationFn: (data: { term: string; weight: number; expected_sentiment: 'positive' | 'negative' | 'any' }) => addKeyword(campId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['camp', campId] });
       setNewKeyword('');
       setNewWeight('1.0');
+      setNewSentiment('any');
     },
   });
 
@@ -57,7 +59,11 @@ export default function CampDetail() {
   const handleAddKeyword = (e: React.FormEvent) => {
     e.preventDefault();
     if (newKeyword.trim()) {
-      addKeywordMutation.mutate({ term: newKeyword.trim(), weight: parseFloat(newWeight) || 1.0 });
+      addKeywordMutation.mutate({ 
+        term: newKeyword.trim(), 
+        weight: parseFloat(newWeight) || 1.0,
+        expected_sentiment: newSentiment,
+      });
     }
   };
 
@@ -230,7 +236,7 @@ export default function CampDetail() {
             <h2 className="text-lg font-semibold text-white">Keywords ({camp.keywords.length})</h2>
           </div>
           
-          <form onSubmit={handleAddKeyword} className="p-4 border-b border-gray-800">
+          <form onSubmit={handleAddKeyword} className="p-4 border-b border-gray-800 space-y-2">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -249,6 +255,17 @@ export default function CampDetail() {
                 className="w-16 px-2 py-2 rounded bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-blue-500"
                 title="Weight (higher = stronger signal)"
               />
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={newSentiment}
+                onChange={(e) => setNewSentiment(e.target.value as 'positive' | 'negative' | 'any')}
+                className="flex-1 px-3 py-2 rounded bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-blue-500"
+              >
+                <option value="any">Any sentiment</option>
+                <option value="positive">Positive sentiment</option>
+                <option value="negative">Negative sentiment</option>
+              </select>
               <button
                 type="submit"
                 disabled={!newKeyword.trim() || addKeywordMutation.isPending}
@@ -268,7 +285,18 @@ export default function CampDetail() {
                   key={kw.id}
                   className="flex items-center justify-between p-2 rounded bg-gray-800/50 group"
                 >
-                  <span className="text-white">{kw.term}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white">{kw.term}</span>
+                    {kw.expected_sentiment !== 'any' && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        kw.expected_sentiment === 'positive' 
+                          ? 'bg-green-900/50 text-green-400' 
+                          : 'bg-red-900/50 text-red-400'
+                      }`}>
+                        {kw.expected_sentiment === 'positive' ? '+' : '-'}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-400">×{kw.weight}</span>
                     <button
