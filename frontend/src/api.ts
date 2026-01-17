@@ -155,6 +155,24 @@ export interface CampLeaderboard {
   entries: LeaderboardEntry[];
 }
 
+export interface CampTweet {
+  tweet_id: number;
+  text: string;
+  username: string;
+  name: string | null;
+  profile_image_url: string | null;
+  followers_count: number;
+  score: number;
+  matched_keywords: string[];
+  like_count: number;
+  retweet_count: number;
+}
+
+export interface CampTopTweets {
+  camp: Camp;
+  tweets: CampTweet[];
+}
+
 // Camp API calls
 export async function fetchCamps(): Promise<{ camps: Camp[]; total: number }> {
   const res = await fetch(`${API_BASE}/camps`);
@@ -168,6 +186,11 @@ export async function fetchCamp(id: number): Promise<CampDetail> {
 
 export async function fetchCampLeaderboard(id: number): Promise<CampLeaderboard> {
   const res = await fetch(`${API_BASE}/camps/${id}/leaderboard`);
+  return res.json();
+}
+
+export async function fetchCampTopTweets(id: number): Promise<CampTopTweets> {
+  const res = await fetch(`${API_BASE}/camps/${id}/tweets`);
   return res.json();
 }
 

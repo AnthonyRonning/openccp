@@ -295,6 +295,34 @@ def get_camp_leaderboard(camp_id: int, limit: int = Query(20, ge=1, le=100), db:
     return schemas.CampLeaderboard(camp=camp, entries=entries)
 
 
+@app.get("/api/camps/{camp_id}/tweets", response_model=schemas.CampTopTweets)
+def get_camp_top_tweets(camp_id: int, limit: int = Query(20, ge=1, le=100), db: Session = Depends(get_db)):
+    """Get top tweets matching keywords in this camp."""
+    analyzer = AnalyzerService(db)
+    camp = analyzer.get_camp(camp_id)
+    if not camp:
+        raise HTTPException(status_code=404, detail=f"Camp {camp_id} not found")
+    
+    top_tweets = analyzer.get_camp_top_tweets(camp_id, limit=limit)
+    tweets = [
+        schemas.CampTweet(
+            tweet_id=t["tweet"].id,
+            text=t["tweet"].text,
+            username=t["account"].username,
+            name=t["account"].name,
+            profile_image_url=t["account"].profile_image_url,
+            followers_count=t["account"].followers_count,
+            score=t["score"],
+            matched_keywords=t["matched_keywords"],
+            like_count=t["tweet"].like_count,
+            retweet_count=t["tweet"].retweet_count,
+        )
+        for t in top_tweets
+    ]
+    
+    return schemas.CampTopTweets(camp=camp, tweets=tweets)
+
+
 @app.put("/api/camps/{camp_id}", response_model=schemas.CampBase)
 def update_camp(camp_id: int, request: schemas.CampUpdateRequest, db: Session = Depends(get_db)):
     """Update a camp."""

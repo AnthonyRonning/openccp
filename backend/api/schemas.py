@@ -246,6 +246,24 @@ class CampLeaderboard(BaseModel):
     entries: List[LeaderboardEntry]
 
 
+class CampTweet(BaseModel):
+    tweet_id: int
+    text: str
+    username: str
+    name: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    followers_count: int = 0
+    score: float
+    matched_keywords: List[str]
+    like_count: int = 0
+    retweet_count: int = 0
+
+
+class CampTopTweets(BaseModel):
+    camp: CampBase
+    tweets: List[CampTweet]
+
+
 class AnalyzeRequest(BaseModel):
     username: Optional[str] = None  # None = analyze all
 

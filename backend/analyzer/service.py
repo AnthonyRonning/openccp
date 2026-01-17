@@ -8,7 +8,7 @@ from typing import List, Dict, Tuple, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 
-from backend.db.models import Account, Tweet, Keyword, Camp, AccountCampScore
+from backend.db.models import Account, Tweet, Keyword, Camp, AccountCampScore, TweetKeywordMatch
 
 
 class AnalyzerService:
@@ -46,13 +46,9 @@ class AnalyzerService:
         Analyze a single account across all camps.
         Returns dict of camp_id -> analysis results.
         """
-        # Get all camps with their keywords
         camps = self.db.query(Camp).all()
         results = {}
-
-        # Get account's tweets
         tweets = self.db.query(Tweet).filter(Tweet.account_id == account.id).all()
-        all_tweet_text = " ".join(t.text for t in tweets)
 
         for camp in camps:
             keywords = self.db.query(Keyword).filter(Keyword.camp_id == camp.id).all()
@@ -63,9 +59,20 @@ class AnalyzerService:
             bio_matches = self._find_matches(account.description or "", keywords)
             bio_score = self._compute_score(bio_matches) * 2  # Bio gets 2x weight
 
-            # Analyze tweets
-            tweet_matches = self._find_matches(all_tweet_text, keywords)
-            tweet_score = self._compute_score(tweet_matches)
+            # Analyze each tweet individually and track matches
+            tweet_score = 0.0
+            tweet_matches_agg = {}
+            matched_tweet_ids = []
+            
+            for tweet in tweets:
+                matches = self._find_matches(tweet.text, keywords)
+                if matches:
+                    matched_tweet_ids.append((tweet.id, matches))
+                    for kw, count in matches:
+                        tweet_score += kw.weight * count
+                        if kw.term not in tweet_matches_agg:
+                            tweet_matches_agg[kw.term] = {"term": kw.term, "count": 0, "weight": kw.weight}
+                        tweet_matches_agg[kw.term]["count"] += count
 
             total_score = bio_score + tweet_score
 
@@ -78,10 +85,8 @@ class AnalyzerService:
                     {"term": kw.term, "count": count, "weight": kw.weight}
                     for kw, count in bio_matches
                 ],
-                "tweet_matches": [
-                    {"term": kw.term, "count": count, "weight": kw.weight}
-                    for kw, count in tweet_matches
-                ],
+                "tweet_matches": list(tweet_matches_agg.values()),
+                "matched_tweets": matched_tweet_ids,  # [(tweet_id, [(kw, count), ...])]
             }
 
         return results
@@ -92,6 +97,7 @@ class AnalyzerService:
         saved_scores = {}
 
         for camp_id, data in results.items():
+            # Save account camp score
             stmt = insert(AccountCampScore).values(
                 account_id=account.id,
                 camp_id=camp_id,
@@ -118,6 +124,15 @@ class AnalyzerService:
                 }
             )
             self.db.execute(stmt)
+            
+            # Save tweet keyword matches
+            for tweet_id, matches in data.get("matched_tweets", []):
+                for kw, count in matches:
+                    stmt = insert(TweetKeywordMatch).values(
+                        tweet_id=tweet_id,
+                        keyword_id=kw.id,
+                    ).on_conflict_do_nothing()
+                    self.db.execute(stmt)
 
         self.db.commit()
 
@@ -155,6 +170,52 @@ class AnalyzerService:
             .limit(limit)
             .all()
         )
+
+    def get_camp_top_tweets(self, camp_id: int, limit: int = 20) -> List[dict]:
+        """Get top tweets matching keywords in this camp."""
+        # Get all keyword IDs for this camp
+        keywords = self.db.query(Keyword).filter(Keyword.camp_id == camp_id).all()
+        keyword_ids = [k.id for k in keywords]
+        keyword_map = {k.id: k for k in keywords}
+        
+        if not keyword_ids:
+            return []
+        
+        # Get tweets that have matches, with their accounts
+        matches = (
+            self.db.query(TweetKeywordMatch)
+            .filter(TweetKeywordMatch.keyword_id.in_(keyword_ids))
+            .all()
+        )
+        
+        # Group by tweet and compute score
+        tweet_scores = {}
+        for match in matches:
+            tweet_id = match.tweet_id
+            kw = keyword_map.get(match.keyword_id)
+            if not kw:
+                continue
+            if tweet_id not in tweet_scores:
+                tweet_scores[tweet_id] = {"score": 0, "keywords": []}
+            tweet_scores[tweet_id]["score"] += kw.weight
+            tweet_scores[tweet_id]["keywords"].append(kw.term)
+        
+        # Sort by score and get top tweets
+        sorted_tweets = sorted(tweet_scores.items(), key=lambda x: x[1]["score"], reverse=True)[:limit]
+        
+        results = []
+        for tweet_id, data in sorted_tweets:
+            tweet = self.db.query(Tweet).filter(Tweet.id == tweet_id).first()
+            if tweet:
+                account = self.db.query(Account).filter(Account.id == tweet.account_id).first()
+                results.append({
+                    "tweet": tweet,
+                    "account": account,
+                    "score": data["score"],
+                    "matched_keywords": list(set(data["keywords"])),
+                })
+        
+        return results
 
     def get_account_scores(self, account_id: int) -> List[AccountCampScore]:
         """Get all camp scores for an account."""

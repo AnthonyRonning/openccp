@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { fetchCamp, fetchCampLeaderboard, addKeyword, deleteKeyword, deleteCamp } from '../api';
+import { fetchCamp, fetchCampLeaderboard, fetchCampTopTweets, addKeyword, deleteKeyword, deleteCamp } from '../api';
 
 export default function CampDetail() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +12,7 @@ export default function CampDetail() {
   const [newKeyword, setNewKeyword] = useState('');
   const [newWeight, setNewWeight] = useState('1.0');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'tweets'>('leaderboard');
 
   const { data: camp, isLoading } = useQuery({
     queryKey: ['camp', campId],
@@ -22,6 +23,12 @@ export default function CampDetail() {
   const { data: leaderboard } = useQuery({
     queryKey: ['leaderboard', campId],
     queryFn: () => fetchCampLeaderboard(campId),
+    enabled: !isNaN(campId),
+  });
+
+  const { data: topTweets } = useQuery({
+    queryKey: ['camp-tweets', campId],
+    queryFn: () => fetchCampTopTweets(campId),
     enabled: !isNaN(campId),
   });
 
@@ -96,49 +103,129 @@ export default function CampDetail() {
       )}
 
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Leaderboard */}
+        {/* Main content with tabs */}
         <div className="md:col-span-2 bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-800">
-            <h2 className="text-lg font-semibold text-white">Leaderboard</h2>
+          {/* Tabs */}
+          <div className="flex border-b border-gray-800">
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'leaderboard' 
+                  ? 'text-white border-b-2 border-blue-500' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Top Accounts ({leaderboard?.entries.length || 0})
+            </button>
+            <button
+              onClick={() => setActiveTab('tweets')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'tweets' 
+                  ? 'text-white border-b-2 border-blue-500' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Top Tweets ({topTweets?.tweets.length || 0})
+            </button>
           </div>
-          <div className="divide-y divide-gray-800">
-            {leaderboard?.entries.length === 0 ? (
-              <div className="p-4 text-gray-500">No accounts with scores yet. Add keywords and run analysis!</div>
-            ) : (
-              leaderboard?.entries.map((entry) => (
-                <Link
-                  key={entry.account.id}
-                  to={`/accounts/${entry.account.username}`}
-                  className="flex items-center gap-4 p-4 hover:bg-gray-800/50 transition-colors"
-                >
-                  <span className="text-2xl font-bold text-gray-500 w-8">{entry.rank}</span>
-                  {entry.account.profile_image_url ? (
-                    <img src={entry.account.profile_image_url} alt="" className="w-10 h-10 rounded-full" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-700" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white truncate">
-                      {entry.account.name || entry.account.username}
+
+          {/* Leaderboard Tab */}
+          {activeTab === 'leaderboard' && (
+            <div className="divide-y divide-gray-800">
+              {leaderboard?.entries.length === 0 ? (
+                <div className="p-4 text-gray-500">No accounts with scores yet. Add keywords and run analysis!</div>
+              ) : (
+                leaderboard?.entries.map((entry) => (
+                  <Link
+                    key={entry.account.id}
+                    to={`/accounts/${entry.account.username}`}
+                    className="flex items-center gap-4 p-4 hover:bg-gray-800/50 transition-colors"
+                  >
+                    <span className="text-2xl font-bold text-gray-500 w-8">{entry.rank}</span>
+                    {entry.account.profile_image_url ? (
+                      <img src={entry.account.profile_image_url} alt="" className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-700" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-white truncate">
+                        {entry.account.name || entry.account.username}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        @{entry.account.username} · {entry.account.followers_count.toLocaleString()} followers
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-400">@{entry.account.username}</div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold" style={{ color: camp.color }}>
+                        {entry.score.toFixed(1)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        bio: {entry.bio_score.toFixed(1)} / tweets: {entry.tweet_score.toFixed(1)}
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Tweets Tab */}
+          {activeTab === 'tweets' && (
+            <div className="divide-y divide-gray-800">
+              {topTweets?.tweets.length === 0 ? (
+                <div className="p-4 text-gray-500">No matching tweets found. Run analysis to populate tweet matches!</div>
+              ) : (
+                topTweets?.tweets.map((tweet) => (
+                  <div key={tweet.tweet_id} className="p-4 hover:bg-gray-800/30 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <Link to={`/accounts/${tweet.username}`}>
+                        {tweet.profile_image_url ? (
+                          <img src={tweet.profile_image_url} alt="" className="w-10 h-10 rounded-full" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-700" />
+                        )}
+                      </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Link to={`/accounts/${tweet.username}`} className="font-medium text-white hover:underline">
+                            {tweet.name || tweet.username}
+                          </Link>
+                          <span className="text-gray-500">@{tweet.username}</span>
+                          <span className="text-gray-600">·</span>
+                          <span className="text-gray-500 text-sm">{tweet.followers_count.toLocaleString()} followers</span>
+                        </div>
+                        <p className="text-gray-300 mt-1 whitespace-pre-wrap">{tweet.text}</p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="text-xs text-gray-500">❤️ {tweet.like_count}</span>
+                          <span className="text-xs text-gray-500">🔁 {tweet.retweet_count}</span>
+                          <div className="flex gap-1">
+                            {tweet.matched_keywords.map((kw) => (
+                              <span 
+                                key={kw} 
+                                className="px-2 py-0.5 text-xs rounded"
+                                style={{ backgroundColor: camp.color + '30', color: camp.color }}
+                              >
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold" style={{ color: camp.color }}>
+                          {tweet.score.toFixed(1)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold" style={{ color: camp.color }}>
-                      {entry.score.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      bio: {entry.bio_score.toFixed(1)} / tweets: {entry.tweet_score.toFixed(1)}
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Keywords */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        {/* Keywords sidebar */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden h-fit">
           <div className="p-4 border-b border-gray-800">
             <h2 className="text-lg font-semibold text-white">Keywords ({camp.keywords.length})</h2>
           </div>
