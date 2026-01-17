@@ -268,7 +268,7 @@ def get_camp(camp_id: int, db: Session = Depends(get_db)):
         description=camp.description,
         color=camp.color,
         created_at=camp.created_at,
-        keywords=[schemas.CampKeyword(id=k.id, term=k.term, weight=k.weight, case_sensitive=k.case_sensitive) for k in keywords],
+        keywords=[schemas.CampKeyword(id=k.id, term=k.term, weight=k.weight, case_sensitive=k.case_sensitive, expected_sentiment=k.expected_sentiment) for k in keywords],
     )
 
 
