@@ -314,3 +314,20 @@ class TweetWithSentiment(BaseModel):
 class CampTweetWithSentiment(CampTweet):
     sentiment: Optional[str] = None
     sentiment_score: Optional[float] = None
+
+
+# === Summary Schemas ===
+
+class TopicSentiment(BaseModel):
+    noticing: bool
+    comment: str
+    examples: List[str] = []
+
+
+class SummaryRequest(BaseModel):
+    topics: Optional[List[str]] = None  # None = use default topics
+
+
+class SummaryResponse(BaseModel):
+    username: str
+    topics: Dict[str, TopicSentiment]

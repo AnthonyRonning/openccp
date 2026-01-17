@@ -6,7 +6,7 @@ import { fetchGraph } from '../api';
 
 export default function Graph() {
   const navigate = useNavigate();
-  const graphRef = useRef<any>();
+  const graphRef = useRef<any>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['graph'],

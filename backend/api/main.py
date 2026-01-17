@@ -9,7 +9,7 @@ from typing import Optional, List
 
 from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore
 from backend.scraper import ScraperService
-from backend.analyzer import AnalyzerService
+from backend.analyzer import AnalyzerService, SummaryService, DEFAULT_TOPICS
 from backend.api import schemas
 
 
@@ -462,12 +462,12 @@ def analyze_sentiment(request: schemas.SentimentAnalyzeRequest, db: Session = De
     """Run sentiment analysis on tweets (uses Grok API)."""
     from backend.analyzer.sentiment import SentimentAnalyzer
     analyzer = SentimentAnalyzer(db)
-    
+
     if request.camp_id:
         result = analyzer.analyze_camp(request.camp_id, limit=request.limit)
     else:
         result = analyzer.analyze_all(limit=request.limit)
-    
+
     return schemas.SentimentAnalyzeResponse(
         tweets_found=result.get("tweets_found", 0),
         analyzed=result.get("analyzed", 0),
@@ -483,7 +483,7 @@ def get_camp_tweets_with_sentiment(camp_id: int, limit: int = Query(20, ge=1, le
     camp = analyzer.get_camp(camp_id)
     if not camp:
         raise HTTPException(status_code=404, detail=f"Camp {camp_id} not found")
-    
+
     top_tweets = analyzer.get_camp_top_tweets(camp_id, limit=limit)
     tweets = [
         schemas.CampTweetWithSentiment(
@@ -502,5 +502,48 @@ def get_camp_tweets_with_sentiment(camp_id: int, limit: int = Query(20, ge=1, le
         )
         for t in top_tweets
     ]
-    
+
     return tweets
+
+
+# === AI Summary ===
+
+@app.get("/api/topics")
+def get_default_topics():
+    """Get the default list of topics for summary generation."""
+    return {"topics": DEFAULT_TOPICS}
+
+
+@app.post("/api/accounts/{username}/summary", response_model=schemas.SummaryResponse)
+def generate_account_summary(
+    username: str,
+    request: schemas.SummaryRequest,
+):
+    """Generate an AI summary of an account's positions on various topics.
+
+    Uses xAI's x_search tool to search tweets directly from X - no need
+    to have the account scraped in our database first.
+    """
+    try:
+        summary_service = SummaryService()
+        result = summary_service.generate_summary(
+            username=username,
+            topics=request.topics,
+        )
+
+        # Parse the result into the expected format
+        topics_data = result.get("topics", {})
+        parsed_topics = {}
+        for topic_name, sentiment in topics_data.items():
+            parsed_topics[topic_name] = schemas.TopicSentiment(
+                noticing=sentiment.get("noticing", False),
+                comment=sentiment.get("comment", ""),
+                examples=sentiment.get("examples", []),
+            )
+
+        return schemas.SummaryResponse(username=username, topics=parsed_topics)
+
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate summary: {str(e)}")

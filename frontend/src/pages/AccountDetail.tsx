@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import {
   fetchAccount,
@@ -6,7 +7,9 @@ import {
   fetchAccountFollowing,
   fetchAccountFollowers,
   fetchAccountAnalysis,
+  generateAccountSummary,
 } from '../api';
+import type { AccountSummary } from '../api';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -33,6 +36,86 @@ function AccountCard({ account }: { account: any }) {
         <div className="text-xs text-gray-400">@{account.username}</div>
       </div>
     </Link>
+  );
+}
+
+function SummaryCard({ username }: { username: string }) {
+  const [summary, setSummary] = useState<AccountSummary | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => generateAccountSummary(username),
+    onSuccess: (data) => setSummary(data),
+  });
+
+  if (!summary) {
+    return (
+      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <h2 className="text-lg font-semibold text-white mb-4">AI Topic Summary</h2>
+        <p className="text-gray-400 text-sm mb-4">
+          Generate an AI-powered analysis of this account's positions on various topics.
+        </p>
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+        >
+          {mutation.isPending ? 'Generating...' : 'Generate Summary'}
+        </button>
+        {mutation.isError && (
+          <p className="text-red-400 text-sm mt-2">
+            {mutation.error instanceof Error ? mutation.error.message : 'Failed to generate summary'}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  const topics = Object.entries(summary.topics);
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-white">AI Topic Summary</h2>
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          className="text-sm px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+        >
+          {mutation.isPending ? 'Regenerating...' : 'Regenerate'}
+        </button>
+      </div>
+      <div className="space-y-4">
+        {topics.map(([topicName, sentiment]) => (
+          <div
+            key={topicName}
+            className={`p-4 rounded-lg border ${
+              sentiment.noticing
+                ? 'border-green-800/50 bg-green-900/10'
+                : 'border-gray-700/50 bg-gray-800/30'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  sentiment.noticing ? 'bg-green-500' : 'bg-gray-500'
+                }`}
+              />
+              <span className="font-medium text-white">{topicName}</span>
+            </div>
+            <p className="text-gray-300 text-sm">{sentiment.comment}</p>
+            {sentiment.examples.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {sentiment.examples.map((example, i) => (
+                  <p key={i} className="text-xs text-gray-500 italic pl-3 border-l border-gray-700">
+                    "{example}"
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -174,6 +257,9 @@ export default function AccountDetail() {
           </div>
         </div>
       )}
+
+      {/* AI Topic Summary */}
+      <SummaryCard username={username!} />
 
       {/* Content Grid */}
       <div className="grid md:grid-cols-3 gap-6">

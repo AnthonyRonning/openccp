@@ -245,3 +245,36 @@ export async function addKeyword(campId: number, data: { term: string; weight?: 
 export async function deleteKeyword(campId: number, keywordId: number): Promise<void> {
   await fetch(`${API_BASE}/camps/${campId}/keywords/${keywordId}`, { method: 'DELETE' });
 }
+
+// Summary types and API
+export interface TopicSentiment {
+  noticing: boolean;
+  comment: string;
+  examples: string[];
+}
+
+export interface AccountSummary {
+  username: string;
+  topics: Record<string, TopicSentiment>;
+}
+
+export async function fetchDefaultTopics(): Promise<{ topics: string[] }> {
+  const res = await fetch(`${API_BASE}/topics`);
+  return res.json();
+}
+
+export async function generateAccountSummary(
+  username: string,
+  topics?: string[]
+): Promise<AccountSummary> {
+  const res = await fetch(`${API_BASE}/accounts/${username}/summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topics }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to generate summary');
+  }
+  return res.json();
+}
