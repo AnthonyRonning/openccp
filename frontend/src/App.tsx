@@ -8,6 +8,7 @@ import Scrape from './pages/Scrape';
 import Camps from './pages/Camps';
 import CampDetail from './pages/CampDetail';
 import Topic from './pages/Topic';
+import Tweets from './pages/Tweets';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             OpenCCP
           </Link>
           <NavLink to="/">Dashboard</NavLink>
+          <NavLink to="/tweets">Tweets</NavLink>
           <NavLink to="/accounts">Accounts</NavLink>
           <NavLink to="/camps">Camps</NavLink>
           <NavLink to="/topic">Topic</NavLink>
@@ -56,6 +58,7 @@ export default function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/tweets" element={<Tweets />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/accounts/:username" element={<AccountDetail />} />
             <Route path="/camps" element={<Camps />} />

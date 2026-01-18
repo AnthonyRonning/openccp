@@ -29,6 +29,28 @@ export interface Tweet {
   impression_count: number;
 }
 
+export interface TweetWithAuthor {
+  id: string;
+  account_id: number;
+  text: string;
+  twitter_created_at: string | null;
+  retweet_count: number;
+  reply_count: number;
+  like_count: number;
+  quote_count: number;
+  impression_count: number;
+  author_username: string;
+  author_name: string | null;
+  author_profile_image_url: string | null;
+  author_verified: boolean;
+}
+
+export interface TweetFeedResponse {
+  tweets: TweetWithAuthor[];
+  total: number;
+  has_more: boolean;
+}
+
 export interface GraphNode {
   id: string;
   username: string;
@@ -59,6 +81,29 @@ export interface Stats {
 
 export async function fetchStats(): Promise<Stats> {
   const res = await fetch(`${API_BASE}/stats`);
+  return res.json();
+}
+
+export interface TweetFeedParams {
+  limit?: number;
+  offset?: number;
+  username?: string;
+  since?: string;
+  until?: string;
+  search?: string;
+}
+
+export async function fetchTweetFeed(params: TweetFeedParams = {}): Promise<TweetFeedResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.limit) searchParams.set('limit', String(params.limit));
+  if (params.offset) searchParams.set('offset', String(params.offset));
+  if (params.username) searchParams.set('username', params.username);
+  if (params.since) searchParams.set('since', params.since);
+  if (params.until) searchParams.set('until', params.until);
+  if (params.search) searchParams.set('search', params.search);
+  
+  const url = `${API_BASE}/tweets${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const res = await fetch(url);
   return res.json();
 }
 

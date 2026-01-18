@@ -57,6 +57,66 @@ def get_stats(db: Session = Depends(get_db)):
     )
 
 
+# === Tweet Feed ===
+
+@app.get("/api/tweets", response_model=schemas.TweetFeedResponse)
+def get_tweets_feed(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    account_id: Optional[int] = Query(None, description="Filter by account ID"),
+    username: Optional[str] = Query(None, description="Filter by username"),
+    since: Optional[datetime] = Query(None, description="Tweets after this date"),
+    until: Optional[datetime] = Query(None, description="Tweets before this date"),
+    search: Optional[str] = Query(None, description="Search tweet text"),
+    db: Session = Depends(get_db),
+):
+    """Get tweets feed with filters, newest first."""
+    query = db.query(Tweet, Account).join(Account, Tweet.account_id == Account.id)
+    
+    # Apply filters
+    if account_id:
+        query = query.filter(Tweet.account_id == account_id)
+    if username:
+        query = query.filter(Account.username == username)
+    if since:
+        query = query.filter(Tweet.twitter_created_at >= since)
+    if until:
+        query = query.filter(Tweet.twitter_created_at <= until)
+    if search:
+        query = query.filter(Tweet.text.ilike(f"%{search}%"))
+    
+    # Get total count
+    total = query.count()
+    
+    # Order by newest first and paginate
+    query = query.order_by(Tweet.twitter_created_at.desc().nullslast())
+    results = query.offset(offset).limit(limit + 1).all()  # Fetch one extra to check has_more
+    
+    has_more = len(results) > limit
+    results = results[:limit]
+    
+    tweets = [
+        schemas.TweetWithAuthor(
+            id=str(tweet.id),
+            account_id=tweet.account_id,
+            text=tweet.text,
+            twitter_created_at=tweet.twitter_created_at,
+            retweet_count=tweet.retweet_count,
+            reply_count=tweet.reply_count,
+            like_count=tweet.like_count,
+            quote_count=tweet.quote_count,
+            impression_count=tweet.impression_count,
+            author_username=account.username,
+            author_name=account.name,
+            author_profile_image_url=account.profile_image_url,
+            author_verified=account.verified,
+        )
+        for tweet, account in results
+    ]
+    
+    return schemas.TweetFeedResponse(tweets=tweets, total=total, has_more=has_more)
+
+
 # === Accounts ===
 
 @app.get("/api/accounts", response_model=schemas.AccountList)

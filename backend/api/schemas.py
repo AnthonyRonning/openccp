@@ -77,6 +77,31 @@ class TweetList(BaseModel):
     total: int
 
 
+class TweetWithAuthor(BaseModel):
+    id: str  # String to avoid JS precision loss
+    account_id: int
+    text: str
+    twitter_created_at: Optional[datetime] = None
+    retweet_count: int = 0
+    reply_count: int = 0
+    like_count: int = 0
+    quote_count: int = 0
+    impression_count: int = 0
+    # Author info
+    author_username: str
+    author_name: Optional[str] = None
+    author_profile_image_url: Optional[str] = None
+    author_verified: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TweetFeedResponse(BaseModel):
+    tweets: List[TweetWithAuthor]
+    total: int
+    has_more: bool
+
+
 # === Graph Schemas ===
 
 class GraphNode(BaseModel):
