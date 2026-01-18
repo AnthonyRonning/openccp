@@ -157,7 +157,7 @@ function TopicsSettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   );
 }
 
-function SummaryCard({ username }: { username: string }) {
+function SummaryCard({ username, account }: { username: string; account: { name: string | null; profile_image_url: string | null } }) {
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -293,6 +293,11 @@ function SummaryCard({ username }: { username: string }) {
                     text={tweet.text}
                     likeCount={tweet.like_count}
                     retweetCount={tweet.retweet_count}
+                    author={{
+                      username,
+                      name: account.name || undefined,
+                      profileImageUrl: account.profile_image_url || undefined,
+                    }}
                   />
                 ))}
               </div>
@@ -460,7 +465,7 @@ export default function AccountDetail() {
       )}
 
       {/* AI Topic Summary */}
-      <SummaryCard username={username!} />
+      <SummaryCard username={username!} account={account} />
 
       {/* Content Grid */}
       <div className="grid md:grid-cols-3 gap-4">
@@ -500,6 +505,11 @@ export default function AccountDetail() {
                     likeCount={tweet.like_count}
                     retweetCount={tweet.retweet_count}
                     impressionCount={tweet.impression_count}
+                    author={{
+                      username: account.username,
+                      name: account.name || undefined,
+                      profileImageUrl: account.profile_image_url || undefined,
+                    }}
                   />
                 ))}
               </div>
