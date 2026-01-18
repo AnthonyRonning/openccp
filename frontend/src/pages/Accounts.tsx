@@ -12,15 +12,15 @@ export default function Accounts() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Accounts</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-semibold text-foreground">Accounts</h1>
+          <p className="text-sm text-muted-foreground">
             {data?.total || 0} accounts in database
           </p>
         </div>
-        <label className="flex items-center gap-2 text-muted-foreground cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
           <input
             type="checkbox"
             checked={seedsOnly}
@@ -34,31 +34,31 @@ export default function Accounts() {
       {isLoading ? (
         <div className="text-muted-foreground">Loading...</div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-2">
           {data?.accounts.map((account) => (
             <Link
               key={account.id}
               to={`/accounts/${account.username}`}
-              className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors overflow-hidden"
+              className="flex items-center gap-3 p-3 rounded-xl bg-card ring-1 ring-foreground/10 hover:ring-primary/30 transition-all overflow-hidden"
             >
               {account.profile_image_url ? (
                 <img
                   src={account.profile_image_url}
                   alt={account.username}
-                  className="w-11 h-11 rounded-full shrink-0"
+                  className="w-10 h-10 rounded-full shrink-0"
                 />
               ) : (
-                <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
                   ?
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-foreground truncate">
                     {account.name || account.username}
                   </span>
                   {account.is_seed && (
-                    <span className="px-2 py-0.5 text-xs rounded bg-primary text-primary-foreground shrink-0">
+                    <span className="px-1.5 py-0.5 text-xs rounded bg-primary text-primary-foreground shrink-0">
                       SEED
                     </span>
                   )}
@@ -66,16 +66,16 @@ export default function Accounts() {
                     <span className="text-primary shrink-0">✓</span>
                   )}
                 </div>
-                <div className="text-sm text-muted-foreground">@{account.username}</div>
+                <div className="text-xs text-muted-foreground">@{account.username}</div>
                 {account.description && (
-                  <div className="text-sm text-muted-foreground/70 truncate mt-1">
+                  <div className="text-xs text-muted-foreground/70 truncate mt-0.5">
                     {account.description}
                   </div>
                 )}
               </div>
-              <div className="text-right text-sm shrink-0">
-                <div className="text-foreground">{account.followers_count.toLocaleString()}</div>
-                <div className="text-muted-foreground">followers</div>
+              <div className="text-right shrink-0">
+                <div className="text-sm text-foreground">{account.followers_count.toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground">followers</div>
               </div>
             </Link>
           ))}

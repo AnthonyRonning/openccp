@@ -56,7 +56,7 @@ export default function Graph() {
     const size = Math.max(4, Math.min(20, Math.log10(node.followers_count + 1) * 4));
 
     // Node color - using primary for seeds, muted for discovered
-    const color = node.is_seed ? '#b0704a' : '#5a5a5a';
+    const color = node.is_seed ? '#c0785a' : '#4a4a4a';
 
     // Draw node
     ctx.beginPath();
@@ -66,7 +66,7 @@ export default function Graph() {
 
     // Draw border for seeds
     if (node.is_seed) {
-      ctx.strokeStyle = '#c98a6a';
+      ctx.strokeStyle = '#d49070';
       ctx.lineWidth = 2 / globalScale;
       ctx.stroke();
     }
@@ -74,7 +74,7 @@ export default function Graph() {
     // Draw label
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#e8e8e8';
+    ctx.fillStyle = '#e0e0e0';
     ctx.fillText(`@${label}`, node.x, node.y + size + fontSize);
   }, []);
 
@@ -83,27 +83,27 @@ export default function Graph() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Network Graph</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-semibold text-foreground">Network Graph</h1>
+          <p className="text-sm text-muted-foreground">
             {data?.nodes.length || 0} accounts, {data?.edges.length || 0} connections
           </p>
         </div>
-        <div className="flex gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-primary" />
+        <div className="flex gap-3 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-primary" />
             <span className="text-muted-foreground">Seed</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-muted" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-muted" />
             <span className="text-muted-foreground">Discovered</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border border-border overflow-hidden" style={{ height: '70vh' }}>
+      <div className="bg-card rounded-xl ring-1 ring-foreground/10 overflow-hidden" style={{ height: '70vh' }}>
         <ForceGraph2D
           ref={graphRef}
           graphData={graphData}
@@ -117,17 +117,17 @@ export default function Graph() {
             ctx.arc(node.x, node.y, size + 5, 0, 2 * Math.PI);
             ctx.fill();
           }}
-          linkColor={() => '#333333'}
+          linkColor={() => '#2a2a2a'}
           linkWidth={1}
           linkDirectionalArrowLength={4}
           linkDirectionalArrowRelPos={1}
           onNodeClick={handleNodeClick}
-          backgroundColor="#1a1a1a"
+          backgroundColor="#1f1f1f"
           cooldownTicks={100}
         />
       </div>
 
-      <p className="text-muted-foreground text-sm text-center">
+      <p className="text-xs text-muted-foreground text-center">
         Click on a node to view account details. Drag to pan, scroll to zoom.
       </p>
     </div>

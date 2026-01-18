@@ -17,8 +17,8 @@ import type { AccountSummary, Topic } from '../api';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-card rounded-lg p-6 border border-border">
-      <h2 className="text-lg font-semibold text-foreground mb-4">{title}</h2>
+    <div className="bg-card rounded-xl p-4 ring-1 ring-foreground/10 shadow-xs">
+      <h2 className="text-sm font-medium text-foreground mb-3">{title}</h2>
       {children}
     </div>
   );
@@ -28,15 +28,15 @@ function AccountCard({ account }: { account: any }) {
   return (
     <Link
       to={`/accounts/${account.username}`}
-      className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+      className="flex items-center gap-2 p-2 rounded-md bg-secondary/50 hover:bg-secondary transition-colors"
     >
       {account.profile_image_url ? (
-        <img src={account.profile_image_url} alt="" className="w-8 h-8 rounded-full" />
+        <img src={account.profile_image_url} alt="" className="w-7 h-7 rounded-full" />
       ) : (
-        <div className="w-8 h-8 rounded-full bg-muted" />
+        <div className="w-7 h-7 rounded-full bg-muted" />
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-foreground truncate">{account.name}</div>
+        <div className="text-xs font-medium text-foreground truncate">{account.name}</div>
         <div className="text-xs text-muted-foreground">@{account.username}</div>
       </div>
     </Link>
@@ -300,94 +300,93 @@ export default function AccountDetail() {
   if (!account) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-start gap-6">
+      <div className="flex items-start gap-4">
         {account.profile_image_url ? (
           <img
             src={account.profile_image_url.replace('_normal', '_400x400')}
             alt={account.username}
-            className="w-24 h-24 rounded-full"
+            className="w-20 h-20 rounded-full"
           />
         ) : (
-          <div className="w-24 h-24 rounded-full bg-muted" />
+          <div className="w-20 h-20 rounded-full bg-muted" />
         )}
         <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{account.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-foreground">{account.name}</h1>
             {account.is_seed && (
-              <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">SEED</span>
+              <span className="px-1.5 py-0.5 text-xs rounded bg-primary text-primary-foreground">SEED</span>
             )}
-            {account.verified && <span className="text-primary text-xl">✓</span>}
+            {account.verified && <span className="text-primary">✓</span>}
           </div>
-          <div className="text-muted-foreground">@{account.username}</div>
+          <div className="text-sm text-muted-foreground">@{account.username}</div>
           {account.description && (
-            <p className="text-foreground/80 mt-2">{account.description}</p>
+            <p className="text-sm text-foreground/80 mt-1">{account.description}</p>
           )}
           {account.location && (
-            <p className="text-muted-foreground text-sm mt-1">{account.location}</p>
+            <p className="text-xs text-muted-foreground mt-1">{account.location}</p>
           )}
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg p-4 text-center border border-border">
-          <div className="text-2xl font-bold text-foreground">
+      <div className="grid grid-cols-4 gap-2">
+        <div className="bg-card rounded-xl p-3 text-center ring-1 ring-foreground/10">
+          <div className="text-xl font-bold text-foreground">
             {account.followers_count.toLocaleString()}
           </div>
-          <div className="text-sm text-muted-foreground">Followers</div>
+          <div className="text-xs text-muted-foreground">Followers</div>
         </div>
-        <div className="bg-card rounded-lg p-4 text-center border border-border">
-          <div className="text-2xl font-bold text-foreground">
+        <div className="bg-card rounded-xl p-3 text-center ring-1 ring-foreground/10">
+          <div className="text-xl font-bold text-foreground">
             {account.following_count.toLocaleString()}
           </div>
-          <div className="text-sm text-muted-foreground">Following</div>
+          <div className="text-xs text-muted-foreground">Following</div>
         </div>
-        <div className="bg-card rounded-lg p-4 text-center border border-border">
-          <div className="text-2xl font-bold text-foreground">
+        <div className="bg-card rounded-xl p-3 text-center ring-1 ring-foreground/10">
+          <div className="text-xl font-bold text-foreground">
             {account.tweet_count.toLocaleString()}
           </div>
-          <div className="text-sm text-muted-foreground">Tweets</div>
+          <div className="text-xs text-muted-foreground">Tweets</div>
         </div>
-        <div className="bg-card rounded-lg p-4 text-center border border-border">
-          <div className="text-2xl font-bold text-foreground">
+        <div className="bg-card rounded-xl p-3 text-center ring-1 ring-foreground/10">
+          <div className="text-xl font-bold text-foreground">
             {account.like_count.toLocaleString()}
           </div>
-          <div className="text-sm text-muted-foreground">Likes</div>
+          <div className="text-xs text-muted-foreground">Likes</div>
         </div>
       </div>
 
       {/* Camp Analysis */}
       {analysis?.scores && analysis.scores.length > 0 && (
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Camp Analysis</h2>
-          <div className="grid md:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl p-4 ring-1 ring-foreground/10 shadow-xs">
+          <h2 className="text-sm font-medium text-foreground mb-3">Camp Analysis</h2>
+          <div className="grid md:grid-cols-2 gap-3">
             {analysis.scores.map((score) => (
               <div
                 key={score.camp_id}
-                className="p-4 rounded-lg border border-border bg-secondary/30"
+                className="p-3 rounded-lg ring-1 ring-foreground/10 bg-secondary/30"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-foreground">{score.camp_name}</span>
-                  <span className="text-2xl font-bold text-primary">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-foreground">{score.camp_name}</span>
+                  <span className="text-xl font-bold text-primary">
                     {score.score.toFixed(1)}
                   </span>
                 </div>
-                <div className="text-xs text-muted-foreground mb-2">
+                <div className="text-xs text-muted-foreground">
                   Bio: {score.bio_score.toFixed(1)} | Tweets: {score.tweet_score.toFixed(1)}
                 </div>
                 {(score.bio_matches.length > 0 || score.tweet_matches.length > 0) && (
                   <div className="mt-2 pt-2 border-t border-border">
-                    <div className="text-xs text-muted-foreground">Matches:</div>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="flex flex-wrap gap-1">
                       {score.bio_matches.map((m, i) => (
-                        <span key={`bio-${i}`} className="px-2 py-0.5 text-xs rounded bg-secondary text-foreground">
+                        <span key={`bio-${i}`} className="px-1.5 py-0.5 text-xs rounded bg-secondary text-foreground">
                           {m.term} x{m.count}
                         </span>
                       ))}
                       {score.tweet_matches.slice(0, 5).map((m, i) => (
-                        <span key={`tweet-${i}`} className="px-2 py-0.5 text-xs rounded bg-secondary text-foreground">
+                        <span key={`tweet-${i}`} className="px-1.5 py-0.5 text-xs rounded bg-secondary text-foreground">
                           {m.term} x{m.count}
                         </span>
                       ))}
@@ -404,20 +403,19 @@ export default function AccountDetail() {
       <SummaryCard username={username!} />
 
       {/* Content Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-3 gap-4">
         {/* Tweets */}
         <Section title={`Tweets (${tweets?.total || 0} in DB)`}>
           {tweets?.tweets.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No tweets scraped yet</p>
+            <p className="text-xs text-muted-foreground">No tweets scraped yet</p>
           ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-80 overflow-y-auto">
               {tweets?.tweets.map((tweet) => (
-                <div key={tweet.id} className="p-3 rounded-lg bg-secondary/50 text-sm">
+                <div key={tweet.id} className="p-2 rounded-md bg-secondary/50 text-xs">
                   <p className="text-foreground/80">{tweet.text}</p>
-                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                  <div className="flex gap-3 mt-1.5 text-muted-foreground">
                     <span>{tweet.like_count} likes</span>
-                    <span>{tweet.retweet_count} retweets</span>
-                    <span>{tweet.reply_count} replies</span>
+                    <span>{tweet.retweet_count} rt</span>
                   </div>
                 </div>
               ))}
@@ -428,9 +426,9 @@ export default function AccountDetail() {
         {/* Following */}
         <Section title={`Following (${following?.total || 0} in DB)`}>
           {following?.accounts.length === 0 ? (
-            <p className="text-muted-foreground text-sm">None in database</p>
+            <p className="text-xs text-muted-foreground">None in database</p>
           ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-1.5 max-h-80 overflow-y-auto">
               {following?.accounts.map((a) => (
                 <AccountCard key={a.id} account={a} />
               ))}
@@ -441,9 +439,9 @@ export default function AccountDetail() {
         {/* Followers */}
         <Section title={`Followers (${followers?.total || 0} in DB)`}>
           {followers?.accounts.length === 0 ? (
-            <p className="text-muted-foreground text-sm">None in database</p>
+            <p className="text-xs text-muted-foreground">None in database</p>
           ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-1.5 max-h-80 overflow-y-auto">
               {followers?.accounts.map((a) => (
                 <AccountCard key={a.id} account={a} />
               ))}
