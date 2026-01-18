@@ -4,6 +4,7 @@ FastAPI application for OpenCCP.
 
 import os
 import re
+from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -956,6 +957,129 @@ def analyze_topic_sides(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to analyze sides: {str(e)}")
+
+
+# === Crowdsource ===
+
+def parse_twitter_date(date_str: str) -> Optional[datetime]:
+    """Parse Twitter's date format: 'Wed Oct 10 20:19:24 +0000 2018'"""
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%a %b %d %H:%M:%S %z %Y")
+    except:
+        return None
+
+
+@app.post("/api/crowdsource/tweets", response_model=schemas.CrowdsourceResponse)
+def crowdsource_tweets(
+    request: schemas.CrowdsourceRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Accept crowdsourced tweets from browser extension.
+    Upserts tweets and their authors into the database.
+    """
+    tweets_added = 0
+    tweets_updated = 0
+    accounts_added = 0
+    accounts_updated = 0
+    
+    for tweet_data in request.tweets:
+        try:
+            author = tweet_data.author
+            tweet_id = int(tweet_data.id)
+            author_id = int(author.id)
+            
+            # Upsert author
+            existing_account = db.query(Account).filter(Account.id == author_id).first()
+            if existing_account:
+                # Update with fresh data
+                existing_account.username = author.username
+                existing_account.name = author.name
+                existing_account.description = author.description
+                existing_account.location = author.location
+                existing_account.url = author.url
+                existing_account.profile_image_url = author.profile_image_url
+                existing_account.verified = author.verified
+                existing_account.verified_type = author.verified_type
+                existing_account.followers_count = author.followers_count
+                existing_account.following_count = author.following_count
+                existing_account.tweet_count = author.tweet_count
+                existing_account.like_count = author.like_count
+                existing_account.listed_count = author.listed_count
+                existing_account.protected = author.protected
+                if author.created_at:
+                    existing_account.twitter_created_at = parse_twitter_date(author.created_at)
+                accounts_updated += 1
+                account = existing_account
+            else:
+                account = Account(
+                    id=author_id,
+                    username=author.username,
+                    name=author.name,
+                    description=author.description,
+                    location=author.location,
+                    url=author.url,
+                    profile_image_url=author.profile_image_url,
+                    verified=author.verified,
+                    verified_type=author.verified_type,
+                    followers_count=author.followers_count,
+                    following_count=author.following_count,
+                    tweet_count=author.tweet_count,
+                    like_count=author.like_count,
+                    listed_count=author.listed_count,
+                    protected=author.protected,
+                    twitter_created_at=parse_twitter_date(author.created_at) if author.created_at else None,
+                    is_seed=False,
+                    scrape_status="crowdsourced"
+                )
+                db.add(account)
+                accounts_added += 1
+            
+            # Upsert tweet
+            existing_tweet = db.query(Tweet).filter(Tweet.id == tweet_id).first()
+            if existing_tweet:
+                # Update metrics (they change over time)
+                existing_tweet.retweet_count = tweet_data.retweet_count
+                existing_tweet.reply_count = tweet_data.reply_count
+                existing_tweet.like_count = tweet_data.like_count
+                existing_tweet.quote_count = tweet_data.quote_count
+                existing_tweet.bookmark_count = tweet_data.bookmark_count
+                existing_tweet.impression_count = tweet_data.impression_count
+                tweets_updated += 1
+            else:
+                tweet = Tweet(
+                    id=tweet_id,
+                    account_id=author_id,
+                    text=tweet_data.text,
+                    twitter_created_at=parse_twitter_date(tweet_data.created_at) if tweet_data.created_at else None,
+                    conversation_id=int(tweet_data.conversation_id) if tweet_data.conversation_id else None,
+                    in_reply_to_status_id=int(tweet_data.in_reply_to_status_id) if tweet_data.in_reply_to_status_id else None,
+                    in_reply_to_user_id=int(tweet_data.in_reply_to_user_id) if tweet_data.in_reply_to_user_id else None,
+                    retweet_count=tweet_data.retweet_count,
+                    reply_count=tweet_data.reply_count,
+                    like_count=tweet_data.like_count,
+                    quote_count=tweet_data.quote_count,
+                    bookmark_count=tweet_data.bookmark_count,
+                    impression_count=tweet_data.impression_count,
+                    entities=tweet_data.entities
+                )
+                db.add(tweet)
+                tweets_added += 1
+            
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"Error processing tweet {tweet_data.id}: {e}")
+            continue
+    
+    return schemas.CrowdsourceResponse(
+        tweets_added=tweets_added,
+        tweets_updated=tweets_updated,
+        accounts_added=accounts_added,
+        accounts_updated=accounts_updated
+    )
 
 
 # === Static Files (Frontend) ===

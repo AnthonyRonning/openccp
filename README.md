@@ -403,6 +403,66 @@ The backend runs at `http://localhost:8000` and frontend at `http://localhost:51
 | `just analyze` | Analyze all accounts for camp membership |
 | `just stats` | Show database statistics |
 
+## Chrome Extension (Crowdsourced Tweet Collection)
+
+The extension captures tweets as you browse Twitter/X and sends them to our database - completely free! No X API costs for tweets.
+
+### Installing the Extension
+
+**Step 1: Download the extension**
+
+1. Go to the [GitHub repository](https://github.com/AnthonyRonning/openccp)
+2. Click the green **Code** button
+3. Click **Download ZIP**
+4. Find the downloaded ZIP file (usually in your Downloads folder)
+5. Right-click the ZIP and select **Extract All** (Windows) or double-click to unzip (Mac)
+6. Remember where you extracted it!
+
+**Step 2: Install in Chrome**
+
+1. Open Google Chrome
+2. Type `chrome://extensions` in the address bar and press Enter
+3. Look for **Developer mode** in the top-right corner and turn it ON (click the toggle)
+4. Click the **Load unpacked** button (top-left area)
+5. Navigate to where you extracted the files
+6. Select the `extension` folder (not the main folder - the one *inside* called `extension`)
+7. Click **Select Folder**
+
+You should see "OpenCCP Tweet Collector" appear in your extensions list!
+
+**Step 3: Pin the extension (optional but recommended)**
+
+1. Click the puzzle piece icon 🧩 in Chrome's toolbar (top-right)
+2. Find "OpenCCP Tweet Collector" in the list
+3. Click the pin icon 📌 next to it
+
+Now you'll see the extension icon in your toolbar!
+
+### Using the Extension
+
+1. **Click the extension icon** in your toolbar to see the popup
+2. Make sure the toggle is set to **On** (it's on by default)
+3. **Browse Twitter/X normally** - the extension works in the background!
+4. Check the popup anytime to see how many tweets you've collected
+
+That's it! Every tweet you see while browsing helps build our database. Thank you for contributing! 💜
+
+### How It Works (Technical Details)
+
+- Intercepts Twitter's internal API calls as you browse
+- Extracts tweet data (text, likes, retweets, author info)
+- Batches and sends to our backend every 5 seconds
+- Automatically deduplicates - seeing the same tweet twice won't create duplicates
+
+### Cost Savings
+
+| Method | Cost per Tweet |
+|--------|---------------|
+| X API | $0.005 |
+| Crowdsourced (you!) | $0.00 |
+
+Profile lookups (when needed for new accounts) still cost $0.01 each via X API.
+
 ## Rate Limiting Notes
 
 X API has rate limits that vary by tier:

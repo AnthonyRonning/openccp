@@ -420,3 +420,52 @@ class TopicAnalyzeResponse(BaseModel):
     side_a_name: str
     side_b_name: str
     classifications: List[TweetClassification]
+
+
+# === Crowdsource Schemas ===
+
+class CrowdsourceAuthor(BaseModel):
+    id: str
+    username: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    url: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    verified: bool = False
+    verified_type: Optional[str] = None
+    followers_count: int = 0
+    following_count: int = 0
+    tweet_count: int = 0
+    like_count: int = 0
+    listed_count: int = 0
+    created_at: Optional[str] = None
+    protected: bool = False
+
+
+class CrowdsourceTweet(BaseModel):
+    id: str
+    text: str
+    created_at: Optional[str] = None
+    conversation_id: Optional[str] = None
+    in_reply_to_status_id: Optional[str] = None
+    in_reply_to_user_id: Optional[str] = None
+    retweet_count: int = 0
+    reply_count: int = 0
+    like_count: int = 0
+    quote_count: int = 0
+    bookmark_count: int = 0
+    impression_count: int = 0
+    author: CrowdsourceAuthor
+    entities: Optional[Dict] = None
+
+
+class CrowdsourceRequest(BaseModel):
+    tweets: List[CrowdsourceTweet]
+
+
+class CrowdsourceResponse(BaseModel):
+    tweets_added: int
+    tweets_updated: int
+    accounts_added: int
+    accounts_updated: int

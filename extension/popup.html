@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #e5e5e5;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+    
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: #333;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .toggle.active {
+      background: #7c3aed;
+    }
+    
+    .toggle-knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    
+    .toggle.active .toggle-knob {
+      transform: translateX(20px);
+    }
+    
+    .status {
+      font-size: 12px;
+      color: #888;
+    }
+    
+    .status.active {
+      color: #a78bfa;
+    }
+    
+    .stats {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    
+    .stat-label {
+      color: #888;
+    }
+    
+    .stat-value {
+      color: #fff;
+      font-weight: 500;
+    }
+    
+    .stat-value.highlight {
+      color: #a78bfa;
+    }
+    
+    .queue-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background: #7c3aed;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    .pulse.inactive {
+      background: #444;
+      animation: none;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #555;
+    }
+    
+    .footer a {
+      color: #7c3aed;
+      text-decoration: none;
+    }
+    
+    .reset-btn {
+      background: none;
+      border: 1px solid #333;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    
+    .reset-btn:hover {
+      border-color: #555;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="title">OpenCCP Collector</span>
+    <div class="toggle-container">
+      <span class="status" id="status-text">Off</span>
+      <div class="toggle" id="toggle">
+        <div class="toggle-knob"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="queue-indicator">
+    <div class="pulse" id="pulse"></div>
+    <span id="queue-status">Waiting for tweets...</span>
+  </div>
+  
+  <div class="stats">
+    <div class="stat-row">
+      <span class="stat-label">Tweets collected</span>
+      <span class="stat-value highlight" id="collected">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Tweets sent</span>
+      <span class="stat-value" id="sent">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">In queue</span>
+      <span class="stat-value" id="queue">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Last sync</span>
+      <span class="stat-value" id="last-sync">Never</span>
+    </div>
+    <button class="reset-btn" id="reset-btn">Reset Stats</button>
+  </div>
+  
+  <div class="footer">
+    Collecting for <a href="https://violet-meadow-7392.fly.dev" target="_blank">OpenCCP</a>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
