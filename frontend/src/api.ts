@@ -73,8 +73,8 @@ export async function fetchAccount(username: string): Promise<Account> {
   return res.json();
 }
 
-export async function fetchAccountTweets(username: string): Promise<{ tweets: Tweet[]; total: number }> {
-  const res = await fetch(`${API_BASE}/accounts/${username}/tweets`);
+export async function fetchAccountTweets(username: string, sort: 'latest' | 'top' = 'latest'): Promise<{ tweets: Tweet[]; total: number }> {
+  const res = await fetch(`${API_BASE}/accounts/${username}/tweets?sort=${sort}`);
   return res.json();
 }
 

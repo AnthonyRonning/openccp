@@ -75,13 +75,23 @@ def get_account(username: str, db: Session = Depends(get_db)):
 
 
 @app.get("/api/accounts/{username}/tweets", response_model=schemas.TweetList)
-def get_account_tweets(username: str, db: Session = Depends(get_db)):
+def get_account_tweets(
+    username: str,
+    sort: str = Query("latest", description="Sort by: 'latest' or 'top' (by views)"),
+    db: Session = Depends(get_db),
+):
     """Get tweets for an account."""
     account = db.query(Account).filter(Account.username == username).first()
     if not account:
         raise HTTPException(status_code=404, detail=f"Account @{username} not found")
     
-    tweets = db.query(Tweet).filter(Tweet.account_id == account.id).all()
+    query = db.query(Tweet).filter(Tweet.account_id == account.id)
+    if sort == "top":
+        query = query.order_by(Tweet.impression_count.desc())
+    else:
+        query = query.order_by(Tweet.twitter_created_at.desc())
+    
+    tweets = query.all()
     return schemas.TweetList(tweets=tweets, total=len(tweets))
 
 

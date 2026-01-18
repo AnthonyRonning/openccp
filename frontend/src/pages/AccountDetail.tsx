@@ -264,6 +264,7 @@ function SummaryCard({ username }: { username: string }) {
 
 export default function AccountDetail() {
   const { username } = useParams<{ username: string }>();
+  const [tweetSort, setTweetSort] = useState<'latest' | 'top'>('latest');
 
   const { data: account, isLoading, error } = useQuery({
     queryKey: ['account', username],
@@ -272,8 +273,8 @@ export default function AccountDetail() {
   });
 
   const { data: tweets } = useQuery({
-    queryKey: ['account-tweets', username],
-    queryFn: () => fetchAccountTweets(username!),
+    queryKey: ['account-tweets', username, tweetSort],
+    queryFn: () => fetchAccountTweets(username!, tweetSort),
     enabled: !!username,
   });
 
@@ -405,24 +406,47 @@ export default function AccountDetail() {
       {/* Content Grid */}
       <div className="grid md:grid-cols-3 gap-4">
         {/* Tweets */}
-        <Section title={`Tweets (${tweets?.total || 0} in DB)`}>
-          {tweets?.tweets.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No tweets scraped yet</p>
-          ) : (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {tweets?.tweets.map((tweet) => (
-                <div key={tweet.id} className="p-2 rounded-md bg-secondary/50 text-xs">
-                  <p className="text-foreground/80">{tweet.text}</p>
-                  <div className="flex gap-3 mt-1.5 text-muted-foreground">
-                    <span>👁️ {tweet.impression_count.toLocaleString()}</span>
-                    <span>{tweet.like_count} likes</span>
-                    <span>{tweet.retweet_count} rt</span>
-                  </div>
-                </div>
-              ))}
+        <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <h2 className="text-sm font-semibold text-foreground">Tweets ({tweets?.total || 0})</h2>
+            <div className="flex gap-1 bg-secondary rounded-md p-0.5">
+              <button
+                onClick={() => setTweetSort('latest')}
+                className={`px-2 py-1 text-xs rounded ${
+                  tweetSort === 'latest' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Latest
+              </button>
+              <button
+                onClick={() => setTweetSort('top')}
+                className={`px-2 py-1 text-xs rounded ${
+                  tweetSort === 'top' ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Top
+              </button>
             </div>
-          )}
-        </Section>
+          </div>
+          <div className="p-3">
+            {tweets?.tweets.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No tweets scraped yet</p>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {tweets?.tweets.map((tweet) => (
+                  <div key={tweet.id} className="p-2 rounded-md bg-secondary/50 text-xs">
+                    <p className="text-foreground/80">{tweet.text}</p>
+                    <div className="flex gap-3 mt-1.5 text-muted-foreground">
+                      <span>👁️ {tweet.impression_count.toLocaleString()}</span>
+                      <span>{tweet.like_count} likes</span>
+                      <span>{tweet.retweet_count} rt</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Following */}
         <Section title={`Following (${following?.total || 0} in DB)`}>
