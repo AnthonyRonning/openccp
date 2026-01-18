@@ -26,17 +26,27 @@ db:
 backend-install:
     cd backend && uv venv && VIRTUAL_ENV=.venv uv pip install -r requirements.txt
 
-# Run backend server (from project root so imports work)
+# Run backend server with LOCAL database
 backend:
     backend/.venv/bin/uvicorn backend.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Run backend server with PRODUCTION database (for testing backend changes with real data)
+# Uses PROD_DATABASE_URL from .env
+backend-prod:
+    DATABASE_URL="$PROD_DATABASE_URL" backend/.venv/bin/uvicorn backend.api.main:app --reload --host 0.0.0.0 --port 8000
 
 # Install frontend dependencies
 frontend-install:
     cd frontend && bun install
 
-# Run frontend dev server
+# Run frontend dev server (points to local backend)
 frontend:
     cd frontend && bun dev
+
+# Run frontend pointing to PRODUCTION backend (no local backend needed)
+# Great for frontend-only changes with real crowdsourced data
+frontend-prod:
+    cd frontend && VITE_API_TARGET=prod bun dev
 
 # Install all dependencies
 install: backend-install frontend-install
