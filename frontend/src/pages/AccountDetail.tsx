@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { FileDown, ExternalLink } from 'lucide-react';
+import { FileDown, ExternalLink, Save } from 'lucide-react';
 import {
   fetchAccount,
   fetchAccountTweets,
@@ -15,6 +15,8 @@ import {
   createTopic,
   updateTopic,
   deleteTopic,
+  createReport,
+  fetchReports,
 } from '../api';
 import type { AccountSummary, FreeformResponse, FreeformTweet } from '../api';
 import { TweetCard } from '../components/TweetCard';
@@ -157,12 +159,35 @@ function TopicsSettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 }
 
 function SummaryCard({ username, account }: { username: string; account: { name: string | null; profile_image_url: string | null } }) {
+  const queryClient = useQueryClient();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [savedReportId, setSavedReportId] = useState<number | null>(null);
+
+  const { data: previousReports } = useQuery({
+    queryKey: ['reports', 'account_summary', username],
+    queryFn: () => fetchReports({ type: 'account_summary', account_username: username, limit: 5 }),
+  });
 
   const mutation = useMutation({
     mutationFn: () => generateAccountSummary(username),
-    onSuccess: (data) => setSummary(data),
+    onSuccess: (data) => {
+      setSummary(data);
+      setSavedReportId(null);
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: () => createReport({
+      type: 'account_summary',
+      title: `AI Summary for @${username}`,
+      account_username: username,
+      content: { topics: summary!.topics },
+    }),
+    onSuccess: (data) => {
+      setSavedReportId(data.id);
+      queryClient.invalidateQueries({ queryKey: ['reports', 'account_summary', username] });
+    },
   });
 
   const reportMutation = useMutation({
@@ -250,6 +275,24 @@ function SummaryCard({ username, account }: { username: string; account: { name:
             )}
             {mutation.isPending ? 'Regenerating...' : 'Regenerate'}
           </button>
+          {savedReportId ? (
+            <Link
+              to={`/reports/${savedReportId}`}
+              className="text-sm px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              View
+            </Link>
+          ) : (
+            <button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+              className="text-sm px-3 py-1 bg-secondary hover:bg-secondary/80 text-foreground rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saveMutation.isPending ? 'Saving...' : 'Save'}
+            </button>
+          )}
           <button
             onClick={() => reportMutation.mutate()}
             disabled={reportMutation.isPending}
@@ -304,18 +347,61 @@ function SummaryCard({ username, account }: { username: string; account: { name:
           </div>
         ))}
       </div>
+      
+      {previousReports && previousReports.reports.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Previous Summaries</h3>
+          <div className="space-y-1">
+            {previousReports.reports.map((r) => (
+              <Link
+                key={r.id}
+                to={`/reports/${r.id}`}
+                className="block text-sm text-foreground hover:text-primary truncate"
+              >
+                {r.title || 'Untitled'} <span className="text-muted-foreground text-xs">{r.created_at && new Date(r.created_at).toLocaleDateString()}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      
       <TopicsSettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }
 
 function FreeformCard({ username }: { username: string }) {
+  const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState<FreeformResponse | null>(null);
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  
+  const { data: previousReports } = useQuery({
+    queryKey: ['reports', 'freeform', username],
+    queryFn: () => fetchReports({ type: 'freeform', account_username: username, limit: 5 }),
+  });
   
   const mutation = useMutation({
     mutationFn: () => generateFreeformSummary(username, prompt),
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => {
+      setResult(data);
+      setCurrentPrompt(prompt);
+    },
+  });
+  
+  const [savedReportId, setSavedReportId] = useState<number | null>(null);
+  
+  const saveMutation = useMutation({
+    mutationFn: () => createReport({
+      type: 'freeform',
+      title: currentPrompt.slice(0, 100),
+      account_username: username,
+      content: { report: result!.report, referenced_tweets: result!.referenced_tweets, prompt: currentPrompt },
+    }),
+    onSuccess: (data) => {
+      setSavedReportId(data.id);
+      queryClient.invalidateQueries({ queryKey: ['reports', 'freeform', username] });
+    },
   });
 
   const downloadMarkdown = () => {
@@ -430,16 +516,51 @@ function FreeformCard({ username }: { username: string }) {
             >
               New Query
             </button>
+            {savedReportId ? (
+              <Link
+                to={`/reports/${savedReportId}`}
+                className="text-sm px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View
+              </Link>
+            ) : (
+              <button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+                className="text-sm px-3 py-1 bg-secondary hover:bg-secondary/80 text-foreground rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {saveMutation.isPending ? 'Saving...' : 'Save'}
+              </button>
+            )}
             <button
               onClick={downloadMarkdown}
               className="text-sm px-3 py-1 bg-secondary hover:bg-secondary/80 text-foreground rounded transition-colors flex items-center gap-1"
             >
               <FileDown className="w-3.5 h-3.5" />
-              Save as Markdown
+              Markdown
             </button>
           </div>
           <div className="prose prose-sm prose-invert max-w-none text-foreground/90 whitespace-pre-wrap">
             {renderReportWithTweets()}
+          </div>
+        </div>
+      )}
+      
+      {previousReports && previousReports.reports.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Previous Reports</h3>
+          <div className="space-y-1">
+            {previousReports.reports.map((r) => (
+              <Link
+                key={r.id}
+                to={`/reports/${r.id}`}
+                className="block text-sm text-foreground hover:text-primary truncate"
+              >
+                {r.title || 'Untitled'} <span className="text-muted-foreground text-xs">{r.created_at && new Date(r.created_at).toLocaleDateString()}</span>
+              </Link>
+            ))}
           </div>
         </div>
       )}

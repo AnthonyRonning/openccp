@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore, Topic, TweetAnalysis
+from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore, Topic, TweetAnalysis, Report
 from backend.scraper import ScraperService, XClient
 from backend.analyzer import AnalyzerService, SummaryService
 from backend.analyzer.topic import TopicService, extract_tweet_ids_from_urls
@@ -1254,6 +1254,57 @@ def crowdsource_tweets(
         accounts_added=accounts_added,
         accounts_updated=accounts_updated
     )
+
+
+# === Reports ===
+
+@app.post("/api/reports", response_model=schemas.ReportFull)
+def create_report(request: schemas.ReportCreateRequest, db: Session = Depends(get_db)):
+    """Create a new report."""
+    report = Report(
+        type=request.type,
+        title=request.title,
+        account_username=request.account_username,
+        topic_query=request.topic_query,
+        content=request.content,
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+@app.get("/api/reports", response_model=schemas.ReportListResponse)
+def list_reports(
+    type: Optional[str] = Query(None),
+    account_username: Optional[str] = Query(None),
+    topic_query: Optional[str] = Query(None),
+    limit: int = Query(20, le=100),
+    db: Session = Depends(get_db),
+):
+    """List reports with optional filters."""
+    query = db.query(Report).order_by(Report.created_at.desc())
+    
+    if type:
+        query = query.filter(Report.type == type)
+    if account_username:
+        query = query.filter(Report.account_username == account_username)
+    if topic_query:
+        query = query.filter(Report.topic_query == topic_query)
+    
+    total = query.count()
+    reports = query.limit(limit).all()
+    
+    return schemas.ReportListResponse(reports=reports, total=total)
+
+
+@app.get("/api/reports/{report_id}", response_model=schemas.ReportFull)
+def get_report(report_id: int, db: Session = Depends(get_db)):
+    """Get a single report by ID."""
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
 
 
 # === Static Files (Frontend) ===

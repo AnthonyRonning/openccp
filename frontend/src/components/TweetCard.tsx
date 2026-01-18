@@ -5,8 +5,8 @@ import { TweetText } from './TweetText';
 interface TweetCardProps {
   id: string;
   text: string;
-  likeCount: number;
-  retweetCount: number;
+  likeCount?: number;
+  retweetCount?: number;
   impressionCount?: number;
   author?: {
     username: string;
@@ -72,14 +72,18 @@ export function TweetCard({
                 {impressionCount.toLocaleString()}
               </span>
             )}
-            <span className="flex items-center gap-1">
-              <Heart className="w-3 h-3" />
-              {likeCount.toLocaleString()}
-            </span>
-            <span className="flex items-center gap-1">
-              <Repeat className="w-3 h-3" />
-              {retweetCount.toLocaleString()}
-            </span>
+            {likeCount !== undefined && (
+              <span className="flex items-center gap-1">
+                <Heart className="w-3 h-3" />
+                {likeCount.toLocaleString()}
+              </span>
+            )}
+            {retweetCount !== undefined && (
+              <span className="flex items-center gap-1">
+                <Repeat className="w-3 h-3" />
+                {retweetCount.toLocaleString()}
+              </span>
+            )}
             {tweetUrl && (
               <a
                 href={tweetUrl}

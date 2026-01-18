@@ -258,3 +258,19 @@ class TweetAnalysis(Base):
 
     def __repr__(self) -> str:
         return f"<TweetAnalysis tweet={self.tweet_id} side={self.side}>"
+
+
+class Report(Base):
+    """Stored reports for topics and account analyses."""
+    __tablename__ = "reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)  # 'topic_sides', 'account_summary', 'freeform'
+    title: Mapped[Optional[str]] = mapped_column(String(255))
+    account_username: Mapped[Optional[str]] = mapped_column(String(255))
+    topic_query: Mapped[Optional[str]] = mapped_column(Text)
+    content: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self) -> str:
+        return f"<Report id={self.id} type={self.type}>"

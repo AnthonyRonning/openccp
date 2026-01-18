@@ -9,6 +9,7 @@ import Camps from './pages/Camps';
 import CampDetail from './pages/CampDetail';
 import Topic from './pages/Topic';
 import Tweets from './pages/Tweets';
+import ReportDetail from './pages/ReportDetail';
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ export default function App() {
             <Route path="/camps" element={<Camps />} />
             <Route path="/camps/:id" element={<CampDetail />} />
             <Route path="/topic" element={<Topic />} />
+            <Route path="/reports/:id" element={<ReportDetail />} />
             <Route path="/graph" element={<Graph />} />
             <Route path="/scrape" element={<Scrape />} />
           </Routes>

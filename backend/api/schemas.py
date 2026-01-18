@@ -498,3 +498,33 @@ class CrowdsourceResponse(BaseModel):
     tweets_updated: int
     accounts_added: int
     accounts_updated: int
+
+
+# === Report Schemas ===
+
+class ReportBase(BaseModel):
+    id: int
+    type: str
+    title: Optional[str] = None
+    account_username: Optional[str] = None
+    topic_query: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReportFull(ReportBase):
+    content: Dict
+
+
+class ReportCreateRequest(BaseModel):
+    type: str
+    title: Optional[str] = None
+    account_username: Optional[str] = None
+    topic_query: Optional[str] = None
+    content: Dict
+
+
+class ReportListResponse(BaseModel):
+    reports: List[ReportBase]
+    total: int

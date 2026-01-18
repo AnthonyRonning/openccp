@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
-import { searchTopic, analyzeTopicSides } from '../api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { Search, Save, ExternalLink } from 'lucide-react';
+import { searchTopic, analyzeTopicSides, createReport, fetchReports } from '../api';
 import type { TopicTweetResult, TopicSearchResponse, TopicAnalyzeResponse } from '../api';
 import { TweetCard } from '../components/TweetCard';
 
@@ -27,6 +28,7 @@ function TopicTweetCard({ tweet, reason }: { tweet: TopicTweetResult; reason?: s
 }
 
 export default function Topic() {
+  const queryClient = useQueryClient();
   const [view, setView] = useState<View>('search');
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TopicSearchResponse | null>(null);
@@ -39,6 +41,12 @@ export default function Topic() {
   
   // Analysis results
   const [analysisResults, setAnalysisResults] = useState<TopicAnalyzeResponse | null>(null);
+  
+  // Previous reports
+  const { data: previousReports } = useQuery({
+    queryKey: ['reports', 'topic_sides'],
+    queryFn: () => fetchReports({ type: 'topic_sides', limit: 10 }),
+  });
 
   const searchMutation = useMutation({
     mutationFn: () => searchTopic(query),
@@ -59,6 +67,48 @@ export default function Topic() {
     onSuccess: (data) => {
       setAnalysisResults(data);
       setView('analyzed');
+    },
+  });
+
+  const [savedReportId, setSavedReportId] = useState<number | null>(null);
+  
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      if (!analysisResults || !searchResults) throw new Error('No results');
+      const tweetMap = new Map(searchResults.tweets.flatMap(t => {
+        const items: [string, TopicTweetResult][] = [[t.id, t]];
+        if (t.top_reply) items.push([t.top_reply.id, t.top_reply]);
+        return items;
+      }));
+      
+      const buildTweetData = (ids: string[]) => ids.map(id => {
+        const t = tweetMap.get(id);
+        const c = analysisResults.classifications.find(x => x.tweet_id === id);
+        return t ? { id: t.id, text: t.text, author_username: t.author_username, reason: c?.reason } : null;
+      }).filter(Boolean);
+      
+      const sideA = analysisResults.classifications.filter(c => c.side === 'a').map(c => c.tweet_id);
+      const sideB = analysisResults.classifications.filter(c => c.side === 'b').map(c => c.tweet_id);
+      const ambiguous = analysisResults.classifications.filter(c => c.side === 'ambiguous').map(c => c.tweet_id);
+      
+      return createReport({
+        type: 'topic_sides',
+        title: `${searchResults.query}: ${sideAName} vs ${sideBName}`,
+        topic_query: searchResults.query,
+        content: {
+          query: searchResults.query,
+          side_a_name: sideAName,
+          side_b_name: sideBName,
+          prompt: sidePrompt,
+          side_a: buildTweetData(sideA),
+          side_b: buildTweetData(sideB),
+          ambiguous: buildTweetData(ambiguous),
+        },
+      });
+    },
+    onSuccess: (data) => {
+      setSavedReportId(data.id);
+      queryClient.invalidateQueries({ queryKey: ['reports', 'topic_sides'] });
     },
   });
 
@@ -130,6 +180,27 @@ export default function Topic() {
             </p>
           )}
         </div>
+        
+        {previousReports && previousReports.reports.length > 0 && (
+          <div className="mt-8 pt-8 border-t border-border">
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">Previous Reports</h2>
+            <div className="space-y-2">
+              {previousReports.reports.map((r) => (
+                <Link
+                  key={r.id}
+                  to={`/reports/${r.id}`}
+                  className="block p-3 bg-card rounded-lg ring-1 ring-foreground/10 hover:ring-primary/30 transition-all"
+                >
+                  <div className="text-sm font-medium text-foreground">{r.title || 'Untitled'}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.topic_query && `${r.topic_query} • `}
+                    {r.created_at && new Date(r.created_at).toLocaleDateString()}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -274,6 +345,24 @@ export default function Topic() {
             Analysis: "{searchResults.query}"
           </h1>
           <div className="flex gap-2">
+            {savedReportId ? (
+              <Link
+                to={`/reports/${savedReportId}`}
+                className="text-sm px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View
+              </Link>
+            ) : (
+              <button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+                className="text-sm px-3 py-1 bg-secondary hover:bg-secondary/80 text-foreground rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {saveMutation.isPending ? 'Saving...' : 'Save'}
+              </button>
+            )}
             <button
               onClick={() => setView('results')}
               className="text-sm text-muted-foreground hover:text-foreground"

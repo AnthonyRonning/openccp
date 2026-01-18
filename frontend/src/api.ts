@@ -504,3 +504,62 @@ export async function analyzeTopicSides(
   }
   return res.json();
 }
+
+
+// === Reports ===
+
+export interface ReportBase {
+  id: number;
+  type: string;
+  title: string | null;
+  account_username: string | null;
+  topic_query: string | null;
+  created_at: string | null;
+}
+
+export interface ReportFull extends ReportBase {
+  content: Record<string, unknown>;
+}
+
+export async function createReport(data: {
+  type: string;
+  title?: string;
+  account_username?: string;
+  topic_query?: string;
+  content: Record<string, unknown>;
+}): Promise<ReportFull> {
+  const res = await fetch(`${API_BASE}/reports`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to create report');
+  }
+  return res.json();
+}
+
+export async function fetchReports(params?: {
+  type?: string;
+  account_username?: string;
+  topic_query?: string;
+  limit?: number;
+}): Promise<{ reports: ReportBase[]; total: number }> {
+  const searchParams = new URLSearchParams();
+  if (params?.type) searchParams.set('type', params.type);
+  if (params?.account_username) searchParams.set('account_username', params.account_username);
+  if (params?.topic_query) searchParams.set('topic_query', params.topic_query);
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  
+  const res = await fetch(`${API_BASE}/reports?${searchParams}`);
+  return res.json();
+}
+
+export async function fetchReport(id: number): Promise<ReportFull> {
+  const res = await fetch(`${API_BASE}/reports/${id}`);
+  if (!res.ok) {
+    throw new Error('Report not found');
+  }
+  return res.json();
+}
