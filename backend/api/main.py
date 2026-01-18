@@ -767,9 +767,11 @@ def search_topic(
         
         # Search for tweets AND their top replies in one Grok call
         search_result = topic_service.search_topic_with_replies(request.query, limit=10)
+        print(f"[DEBUG] Grok search_result: {search_result}")
         tweets_data = search_result.get("tweets", [])
         
         if not tweets_data:
+            print(f"[DEBUG] No tweets_data found")
             return schemas.TopicSearchResponse(query=request.query, tweets=[])
         
         # Collect all tweet IDs (main tweets + replies)
@@ -785,7 +787,9 @@ def search_topic(
                     all_tweet_urls.append(t["top_reply_url"])
         
         # Extract all tweet IDs and fetch in one batch
+        print(f"[DEBUG] all_tweet_urls: {all_tweet_urls}")
         all_tweet_ids = extract_tweet_ids_from_urls(all_tweet_urls)
+        print(f"[DEBUG] all_tweet_ids: {all_tweet_ids}")
         if not all_tweet_ids:
             return schemas.TopicSearchResponse(query=request.query, tweets=[])
         
@@ -828,7 +832,7 @@ def search_topic(
                     if reply_data:
                         reply_author = db.query(Account).filter(Account.id == reply_data.account_id).first()
                         top_reply = schemas.TopicTweetResult(
-                            id=reply_data.id,
+                            id=str(reply_data.id),
                             text=reply_data.text,
                             like_count=reply_data.like_count,
                             retweet_count=reply_data.retweet_count,
@@ -839,7 +843,7 @@ def search_topic(
                         )
             
             results.append(schemas.TopicTweetResult(
-                id=tweet_data.id,
+                id=str(tweet_data.id),
                 text=tweet_data.text,
                 like_count=tweet_data.like_count,
                 retweet_count=tweet_data.retweet_count,
@@ -863,14 +867,17 @@ def analyze_topic_sides(
 ):
     """Analyze tweets and classify them into two sides."""
     try:
+        # Convert string IDs to int for DB query
+        tweet_ids_int = [int(tid) for tid in request.tweet_ids]
+        
         # Fetch tweets from DB
-        tweets = db.query(Tweet).filter(Tweet.id.in_(request.tweet_ids)).all()
+        tweets = db.query(Tweet).filter(Tweet.id.in_(tweet_ids_int)).all()
         if not tweets:
             raise HTTPException(status_code=404, detail="No tweets found")
         
-        # Build tweet data for analysis
+        # Build tweet data for analysis (keep IDs as strings)
         tweets_data = [
-            {"id": t.id, "text": t.text}
+            {"id": str(t.id), "text": t.text}
             for t in tweets
         ]
         
@@ -887,7 +894,7 @@ def analyze_topic_sides(
             side_b_name=request.side_b_name,
             classifications=[
                 schemas.TweetClassification(
-                    tweet_id=c["tweet_id"],
+                    tweet_id=str(c["tweet_id"]),
                     side=c["side"],
                     reason=c["reason"],
                 )

@@ -107,7 +107,7 @@ export default function Topic() {
     });
   };
 
-  const getClassification = (tweetId: number) => {
+  const getClassification = (tweetId: string) => {
     return analysisResults?.classifications.find(c => c.tweet_id === tweetId);
   };
 

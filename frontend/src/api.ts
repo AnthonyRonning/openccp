@@ -349,7 +349,7 @@ export async function generateAccountReport(
 
 // Topic Search types and API
 export interface TopicTweetResult {
-  id: number;
+  id: string;  // Use string to avoid JS number precision issues with large tweet IDs
   text: string;
   like_count: number;
   retweet_count: number;
@@ -366,7 +366,7 @@ export interface TopicSearchResponse {
 }
 
 export interface TweetClassification {
-  tweet_id: number;
+  tweet_id: string;
   side: 'a' | 'b' | 'ambiguous';
   reason: string;
 }
@@ -391,7 +391,7 @@ export async function searchTopic(query: string): Promise<TopicSearchResponse> {
 }
 
 export async function analyzeTopicSides(
-  tweetIds: number[],
+  tweetIds: string[],
   sideAName: string,
   sideBName: string,
   prompt: string

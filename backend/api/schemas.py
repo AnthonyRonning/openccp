@@ -386,7 +386,7 @@ class TopicSearchRequest(BaseModel):
 
 
 class TopicTweetResult(BaseModel):
-    id: int
+    id: str  # String to avoid JS number precision issues
     text: str
     like_count: int = 0
     retweet_count: int = 0
@@ -403,14 +403,14 @@ class TopicSearchResponse(BaseModel):
 
 
 class TopicAnalyzeRequest(BaseModel):
-    tweet_ids: List[int]
+    tweet_ids: List[str]
     side_a_name: str
     side_b_name: str
     prompt: str
 
 
 class TweetClassification(BaseModel):
-    tweet_id: int
+    tweet_id: str
     side: str  # "a", "b", or "ambiguous"
     reason: str
 
