@@ -649,8 +649,12 @@ def generate_account_summary(
                 fetched_tweets = x_client.get_tweets_by_ids(all_tweet_ids)
                 scraper = ScraperService(db)
                 for tweet_data in fetched_tweets:
-                    tweet = scraper._upsert_tweet(tweet_data)
-                    tweet_map[tweet.id] = tweet
+                    scraper._upsert_tweet(tweet_data)
+                    # Query the tweet back to get the DB model
+                    tweet = db.query(Tweet).filter(Tweet.id == tweet_data.id).first()
+                    if tweet:
+                        tweet_map[tweet.id] = tweet
+                db.commit()
             except Exception as e:
                 print(f"Warning: Could not fetch tweets: {e}")
         
