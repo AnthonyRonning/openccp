@@ -405,35 +405,61 @@ The backend runs at `http://localhost:8000` and frontend at `http://localhost:51
 
 ## Chrome Extension (Crowdsourced Tweet Collection)
 
-The extension captures tweets as you browse Twitter/X and sends them to your backend - completely free! No X API costs for tweets.
+The extension captures tweets as you browse Twitter/X and sends them to our database - completely free! No X API costs for tweets.
 
 ### Installing the Extension
 
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top right)
-3. Click **Load unpacked**
-4. Select the `extension/` folder from this repo
+**Step 1: Download the extension**
+
+1. Go to the [GitHub repository](https://github.com/AnthonyRonning/openccp)
+2. Click the green **Code** button
+3. Click **Download ZIP**
+4. Find the downloaded ZIP file (usually in your Downloads folder)
+5. Right-click the ZIP and select **Extract All** (Windows) or double-click to unzip (Mac)
+6. Remember where you extracted it!
+
+**Step 2: Install in Chrome**
+
+1. Open Google Chrome
+2. Type `chrome://extensions` in the address bar and press Enter
+3. Look for **Developer mode** in the top-right corner and turn it ON (click the toggle)
+4. Click the **Load unpacked** button (top-left area)
+5. Navigate to where you extracted the files
+6. Select the `extension` folder (not the main folder - the one *inside* called `extension`)
+7. Click **Select Folder**
+
+You should see "OpenCCP Tweet Collector" appear in your extensions list!
+
+**Step 3: Pin the extension (optional but recommended)**
+
+1. Click the puzzle piece icon 🧩 in Chrome's toolbar (top-right)
+2. Find "OpenCCP Tweet Collector" in the list
+3. Click the pin icon 📌 next to it
+
+Now you'll see the extension icon in your toolbar!
 
 ### Using the Extension
 
-1. Click the extension icon in your toolbar to see the popup
-2. Toggle **On/Off** to enable/disable collection
-3. Browse Twitter normally - tweets are captured automatically
-4. Stats show tweets collected, sent, and queued
+1. **Click the extension icon** in your toolbar to see the popup
+2. Make sure the toggle is set to **On** (it's on by default)
+3. **Browse Twitter/X normally** - the extension works in the background!
+4. Check the popup anytime to see how many tweets you've collected
 
-### How It Works
+That's it! Every tweet you see while browsing helps build our database. Thank you for contributing! 💜
 
-- Intercepts Twitter's internal XHR API calls
-- Parses tweet objects (text, metrics, author info)
-- Batches tweets and sends to backend every 5 seconds
-- Backend upserts tweets and accounts (deduplicates automatically)
+### How It Works (Technical Details)
+
+- Intercepts Twitter's internal API calls as you browse
+- Extracts tweet data (text, likes, retweets, author info)
+- Batches and sends to our backend every 5 seconds
+- Automatically deduplicates - seeing the same tweet twice won't create duplicates
 
 ### Cost Savings
 
 | Method | Cost per Tweet |
 |--------|---------------|
 | X API | $0.005 |
-| Crowdsourced | $0.00 |
+| Crowdsourced (you!) | $0.00 |
 
 Profile lookups (when needed for new accounts) still cost $0.01 each via X API.
 
