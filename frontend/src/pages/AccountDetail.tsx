@@ -14,6 +14,7 @@ import {
   deleteTopic,
 } from '../api';
 import type { AccountSummary, Topic } from '../api';
+import { TweetText } from '../components/TweetText';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -249,7 +250,9 @@ function SummaryCard({ username }: { username: string }) {
               <div className="mt-2 space-y-2">
                 {sentiment.tweets.map((tweet) => (
                   <div key={tweet.id} className="p-2 rounded bg-secondary/50 text-sm">
-                    <p className="text-foreground/90">{tweet.text}</p>
+                    <p className="text-foreground/90">
+                      <TweetText text={tweet.text} />
+                    </p>
                     <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                       <span>❤️ {tweet.like_count}</span>
                       <span>🔁 {tweet.retweet_count}</span>
@@ -444,7 +447,9 @@ export default function AccountDetail() {
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {tweets?.tweets.map((tweet) => (
                   <div key={tweet.id} className="p-2 rounded-md bg-secondary/50 text-xs">
-                    <p className="text-foreground/80">{tweet.text}</p>
+                    <p className="text-foreground/80">
+                      <TweetText text={tweet.text} />
+                    </p>
                     <div className="flex gap-3 mt-1.5 text-muted-foreground">
                       <span>👁️ {tweet.impression_count.toLocaleString()}</span>
                       <span>{tweet.like_count} likes</span>

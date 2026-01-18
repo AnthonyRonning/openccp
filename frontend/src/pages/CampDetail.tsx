@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { fetchCamp, fetchCampLeaderboard, fetchCampTopTweets, addKeyword, deleteKeyword, deleteCamp } from '../api';
+import { TweetText } from '../components/TweetText';
 
 export default function CampDetail() {
   const { id } = useParams<{ id: string }>();
@@ -198,7 +199,9 @@ export default function CampDetail() {
                           </Link>
                           <span className="text-muted-foreground">@{tweet.username}</span>
                         </div>
-                        <p className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">{tweet.text}</p>
+                        <p className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">
+                          <TweetText text={tweet.text} />
+                        </p>
                         <div className="flex items-center gap-3 mt-1.5">
                           <span className="text-xs text-muted-foreground">👁️ {tweet.impression_count.toLocaleString()}</span>
                           <span className="text-xs text-muted-foreground">{tweet.like_count} likes</span>
