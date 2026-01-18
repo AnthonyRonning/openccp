@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { fetchTweetFeed, fetchAccounts } from '../api';
-import type { TweetWithAuthor } from '../api';
+import { fetchTweetFeed, searchAccounts } from '../api';
+import type { TweetWithAuthor, Account } from '../api';
+import { TweetCard } from '../components/TweetCard';
 
 function formatNumber(num: number): string {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -10,84 +10,132 @@ function formatNumber(num: number): string {
   return String(num);
 }
 
-function formatTime(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
+type SortOption = 'latest' | 'views' | 'likes' | 'retweets' | 'replies';
+type TimeFilter = 'all' | '1h' | '24h' | '7d';
+
+function getTimeFilterDate(filter: TimeFilter): string | undefined {
+  if (filter === 'all') return undefined;
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 1) return 'now';
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffHours < 24) return `${diffHours}h`;
-  if (diffDays < 7) return `${diffDays}d`;
-  return date.toLocaleDateString();
+  if (filter === '1h') now.setHours(now.getHours() - 1);
+  else if (filter === '24h') now.setHours(now.getHours() - 24);
+  else if (filter === '7d') now.setDate(now.getDate() - 7);
+  return now.toISOString();
 }
 
-function TweetCard({ tweet }: { tweet: TweetWithAuthor }) {
-  const tweetUrl = `https://x.com/${tweet.author_username}/status/${tweet.id}`;
-  
+function AccountAutocomplete({ 
+  value, 
+  onChange 
+}: { 
+  value: string; 
+  onChange: (username: string) => void;
+}) {
+  const [inputValue, setInputValue] = useState(value);
+  const [suggestions, setSuggestions] = useState<Account[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (inputValue.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const { accounts } = await searchAccounts(inputValue, 10);
+        setSuggestions(accounts);
+        setIsOpen(accounts.length > 0);
+      } catch {
+        setSuggestions([]);
+      }
+      setIsLoading(false);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
+  const handleSelect = (username: string) => {
+    setInputValue(username);
+    onChange(username);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setInputValue('');
+    onChange('');
+    setSuggestions([]);
+  };
+
   return (
-    <div className="border-b border-border p-4 hover:bg-secondary/30 transition-colors">
-      <div className="flex gap-3">
-        {/* Avatar */}
-        <Link to={`/accounts/${tweet.author_username}`} className="flex-shrink-0">
-          {tweet.author_profile_image_url ? (
-            <img
-              src={tweet.author_profile_image_url.replace('_normal', '_bigger')}
-              alt={tweet.author_username}
-              className="w-10 h-10 rounded-full"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium">
-              {tweet.author_username[0].toUpperCase()}
-            </div>
-          )}
-        </Link>
-        
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-1 text-sm">
-            <Link 
-              to={`/accounts/${tweet.author_username}`}
-              className="font-semibold text-foreground hover:underline truncate"
-            >
-              {tweet.author_name || tweet.author_username}
-            </Link>
-            {tweet.author_verified && (
-              <svg className="w-4 h-4 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
-              </svg>
-            )}
-            <span className="text-muted-foreground">@{tweet.author_username}</span>
-            <span className="text-muted-foreground">·</span>
-            <a 
-              href={tweetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:underline"
-            >
-              {formatTime(tweet.twitter_created_at)}
-            </a>
-          </div>
-          
-          {/* Tweet text */}
-          <p className="mt-1 text-foreground whitespace-pre-wrap break-words">{tweet.text}</p>
-          
-          {/* Metrics */}
-          <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-            <span title="Replies">💬 {formatNumber(tweet.reply_count)}</span>
-            <span title="Retweets">🔁 {formatNumber(tweet.retweet_count)}</span>
-            <span title="Likes">❤️ {formatNumber(tweet.like_count)}</span>
-            {tweet.impression_count > 0 && (
-              <span title="Views">👁️ {formatNumber(tweet.impression_count)}</span>
-            )}
-          </div>
-        </div>
+    <div ref={containerRef} className="relative">
+      <div className="flex">
+        <span className="h-9 px-3 flex items-center rounded-l-md border border-r-0 border-border bg-secondary text-muted-foreground text-sm">
+          @
+        </span>
+        <input
+          type="text"
+          placeholder="username"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            if (e.target.value === '') onChange('');
+          }}
+          onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+          className="h-9 w-32 px-3 rounded-r-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        {inputValue && (
+          <button
+            onClick={handleClear}
+            className="ml-1 px-2 text-muted-foreground hover:text-foreground"
+            title="Clear"
+          >
+            x
+          </button>
+        )}
       </div>
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-64 max-h-64 overflow-auto rounded-md border border-border bg-card shadow-lg">
+          {isLoading ? (
+            <div className="p-2 text-sm text-muted-foreground">Searching...</div>
+          ) : (
+            suggestions.map((account) => (
+              <button
+                key={account.id}
+                onClick={() => handleSelect(account.username)}
+                className="w-full px-3 py-2 text-left hover:bg-secondary flex items-center gap-2"
+              >
+                {account.profile_image_url ? (
+                  <img src={account.profile_image_url} alt="" className="w-6 h-6 rounded-full" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-primary/20" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground truncate">
+                    {account.name || account.username}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    @{account.username} · {formatNumber(account.followers_count)} followers
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -97,29 +145,32 @@ export default function Tweets() {
   const [selectedUsername, setSelectedUsername] = useState('');
   const [offset, setOffset] = useState(0);
   const [allTweets, setAllTweets] = useState<TweetWithAuthor[]>([]);
+  const [sort, setSort] = useState<SortOption>('latest');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [hideReplies, setHideReplies] = useState(false);
+  const [minViews, setMinViews] = useState<number | ''>('');
   const limit = 50;
 
-  const { data: accountsData } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: () => fetchAccounts(),
-  });
-
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['tweets-feed', search, selectedUsername, offset],
+    queryKey: ['tweets-feed', search, selectedUsername, offset, sort, timeFilter, hideReplies, minViews],
     queryFn: () => fetchTweetFeed({
       limit,
       offset,
       search: search || undefined,
       username: selectedUsername || undefined,
+      sort,
+      since: getTimeFilterDate(timeFilter),
+      hideReplies,
+      minViews: minViews !== '' ? minViews : undefined,
     }),
-    refetchInterval: 10000, // Auto-refresh every 10 seconds
+    refetchInterval: sort === 'latest' ? 10000 : undefined, // Only auto-refresh for latest
   });
 
   // Reset tweets when filters change
   useEffect(() => {
     setAllTweets([]);
     setOffset(0);
-  }, [search, selectedUsername]);
+  }, [search, selectedUsername, sort, timeFilter, hideReplies, minViews]);
 
   // Append new tweets
   useEffect(() => {
@@ -151,8 +202,8 @@ export default function Tweets() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      {/* Filters Row 1: Search, Account, Sort */}
+      <div className="flex gap-3 flex-wrap items-center">
         <input
           type="text"
           placeholder="Search tweets..."
@@ -160,21 +211,62 @@ export default function Tweets() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 px-3 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <select
+        <AccountAutocomplete
           value={selectedUsername}
-          onChange={(e) => setSelectedUsername(e.target.value)}
+          onChange={setSelectedUsername}
+        />
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortOption)}
           className="h-9 px-3 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          <option value="">All accounts</option>
-          {accountsData?.accounts.map(account => (
-            <option key={account.id} value={account.username}>
-              @{account.username}
-            </option>
-          ))}
+          <option value="latest">Latest</option>
+          <option value="views">Top Views</option>
+          <option value="likes">Top Likes</option>
+          <option value="retweets">Top Retweets</option>
+          <option value="replies">Most Replies</option>
         </select>
         {isFetching && !isLoading && (
-          <span className="text-sm text-muted-foreground self-center">Refreshing...</span>
+          <span className="text-sm text-muted-foreground">Refreshing...</span>
         )}
+      </div>
+
+      {/* Filters Row 2: Time, Hide Replies, Min Views */}
+      <div className="flex gap-3 flex-wrap items-center">
+        <div className="flex gap-1">
+          {(['all', '1h', '24h', '7d'] as TimeFilter[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTimeFilter(t)}
+              className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                timeFilter === t
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border bg-background text-foreground hover:bg-secondary'
+              }`}
+            >
+              {t === 'all' ? 'All time' : t}
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={hideReplies}
+            onChange={(e) => setHideReplies(e.target.checked)}
+            className="rounded border-border"
+          />
+          Hide replies
+        </label>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground">Min views:</label>
+          <input
+            type="number"
+            placeholder="0"
+            value={minViews}
+            onChange={(e) => setMinViews(e.target.value ? parseInt(e.target.value) : '')}
+            className="h-9 w-24 px-3 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
       </div>
 
       {/* Tweet Feed */}
@@ -186,7 +278,20 @@ export default function Tweets() {
         ) : (
           <>
             {allTweets.map(tweet => (
-              <TweetCard key={tweet.id} tweet={tweet} />
+              <div key={tweet.id} className="border-b border-border p-3">
+                <TweetCard
+                  id={tweet.id}
+                  text={tweet.text}
+                  likeCount={tweet.like_count}
+                  retweetCount={tweet.retweet_count}
+                  impressionCount={tweet.impression_count}
+                  author={{
+                    username: tweet.author_username,
+                    name: tweet.author_name || undefined,
+                    profileImageUrl: tweet.author_profile_image_url || undefined,
+                  }}
+                />
+              </div>
             ))}
             
             {data?.has_more && (

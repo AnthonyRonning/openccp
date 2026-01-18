@@ -68,9 +68,13 @@ def get_tweets_feed(
     since: Optional[datetime] = Query(None, description="Tweets after this date"),
     until: Optional[datetime] = Query(None, description="Tweets before this date"),
     search: Optional[str] = Query(None, description="Search tweet text"),
+    sort: str = Query("latest", description="Sort by: latest, views, likes, retweets, replies"),
+    hide_replies: bool = Query(False, description="Hide reply tweets"),
+    min_views: Optional[int] = Query(None, description="Minimum impression count"),
+    min_likes: Optional[int] = Query(None, description="Minimum like count"),
     db: Session = Depends(get_db),
 ):
-    """Get tweets feed with filters, newest first."""
+    """Get tweets feed with filters and sorting."""
     query = db.query(Tweet, Account).join(Account, Tweet.account_id == Account.id)
     
     # Apply filters
@@ -84,12 +88,28 @@ def get_tweets_feed(
         query = query.filter(Tweet.twitter_created_at <= until)
     if search:
         query = query.filter(Tweet.text.ilike(f"%{search}%"))
+    if hide_replies:
+        query = query.filter(Tweet.in_reply_to_user_id == None)
+    if min_views is not None:
+        query = query.filter(Tweet.impression_count >= min_views)
+    if min_likes is not None:
+        query = query.filter(Tweet.like_count >= min_likes)
     
     # Get total count
     total = query.count()
     
-    # Order by newest first and paginate
-    query = query.order_by(Tweet.twitter_created_at.desc().nullslast())
+    # Apply sorting
+    if sort == "views":
+        query = query.order_by(Tweet.impression_count.desc().nullslast())
+    elif sort == "likes":
+        query = query.order_by(Tweet.like_count.desc().nullslast())
+    elif sort == "retweets":
+        query = query.order_by(Tweet.retweet_count.desc().nullslast())
+    elif sort == "replies":
+        query = query.order_by(Tweet.reply_count.desc().nullslast())
+    else:  # latest
+        query = query.order_by(Tweet.twitter_created_at.desc().nullslast())
+    
     results = query.offset(offset).limit(limit + 1).all()  # Fetch one extra to check has_more
     
     has_more = len(results) > limit
@@ -118,6 +138,19 @@ def get_tweets_feed(
 
 
 # === Accounts ===
+
+@app.get("/api/accounts/search", response_model=schemas.AccountList)
+def search_accounts(
+    q: str = Query(..., min_length=1, description="Search query for username"),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """Search accounts by username prefix."""
+    accounts = db.query(Account).filter(
+        Account.username.ilike(f"{q}%")
+    ).order_by(Account.followers_count.desc()).limit(limit).all()
+    return schemas.AccountList(accounts=accounts, total=len(accounts))
+
 
 @app.get("/api/accounts", response_model=schemas.AccountList)
 def list_accounts(

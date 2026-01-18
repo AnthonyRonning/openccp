@@ -91,6 +91,10 @@ export interface TweetFeedParams {
   since?: string;
   until?: string;
   search?: string;
+  sort?: 'latest' | 'views' | 'likes' | 'retweets' | 'replies';
+  hideReplies?: boolean;
+  minViews?: number;
+  minLikes?: number;
 }
 
 export async function fetchTweetFeed(params: TweetFeedParams = {}): Promise<TweetFeedResponse> {
@@ -101,6 +105,10 @@ export async function fetchTweetFeed(params: TweetFeedParams = {}): Promise<Twee
   if (params.since) searchParams.set('since', params.since);
   if (params.until) searchParams.set('until', params.until);
   if (params.search) searchParams.set('search', params.search);
+  if (params.sort) searchParams.set('sort', params.sort);
+  if (params.hideReplies) searchParams.set('hide_replies', 'true');
+  if (params.minViews !== undefined) searchParams.set('min_views', String(params.minViews));
+  if (params.minLikes !== undefined) searchParams.set('min_likes', String(params.minLikes));
   
   const url = `${API_BASE}/tweets${searchParams.toString() ? `?${searchParams}` : ''}`;
   const res = await fetch(url);
@@ -110,6 +118,11 @@ export async function fetchTweetFeed(params: TweetFeedParams = {}): Promise<Twee
 export async function fetchAccounts(seedsOnly = false): Promise<{ accounts: Account[]; total: number }> {
   const url = seedsOnly ? `${API_BASE}/accounts?seeds_only=true` : `${API_BASE}/accounts`;
   const res = await fetch(url);
+  return res.json();
+}
+
+export async function searchAccounts(query: string, limit = 10): Promise<{ accounts: Account[]; total: number }> {
+  const res = await fetch(`${API_BASE}/accounts/search?q=${encodeURIComponent(query)}&limit=${limit}`);
   return res.json();
 }
 
