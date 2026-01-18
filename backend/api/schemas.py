@@ -259,6 +259,7 @@ class CampTweet(BaseModel):
     matched_keywords: List[str]
     like_count: int = 0
     retweet_count: int = 0
+    impression_count: int = 0
 
 
 class CampTopTweets(BaseModel):

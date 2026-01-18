@@ -25,6 +25,7 @@ export interface Tweet {
   reply_count: number;
   like_count: number;
   quote_count: number;
+  impression_count: number;
 }
 
 export interface GraphNode {
@@ -167,6 +168,7 @@ export interface CampTweet {
   matched_keywords: string[];
   like_count: number;
   retweet_count: number;
+  impression_count: number;
 }
 
 export interface CampTopTweets {

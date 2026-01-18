@@ -200,6 +200,7 @@ export default function CampDetail() {
                         </div>
                         <p className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">{tweet.text}</p>
                         <div className="flex items-center gap-3 mt-1.5">
+                          <span className="text-xs text-muted-foreground">👁️ {tweet.impression_count.toLocaleString()}</span>
                           <span className="text-xs text-muted-foreground">{tweet.like_count} likes</span>
                           <span className="text-xs text-muted-foreground">{tweet.retweet_count} rt</span>
                           <div className="flex gap-1">

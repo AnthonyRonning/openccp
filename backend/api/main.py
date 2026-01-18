@@ -316,6 +316,7 @@ def get_camp_top_tweets(camp_id: int, limit: int = Query(20, ge=1, le=100), db: 
             matched_keywords=t["matched_keywords"],
             like_count=t["tweet"].like_count,
             retweet_count=t["tweet"].retweet_count,
+            impression_count=t["tweet"].impression_count,
         )
         for t in top_tweets
     ]

@@ -414,6 +414,7 @@ export default function AccountDetail() {
                 <div key={tweet.id} className="p-2 rounded-md bg-secondary/50 text-xs">
                   <p className="text-foreground/80">{tweet.text}</p>
                   <div className="flex gap-3 mt-1.5 text-muted-foreground">
+                    <span>👁️ {tweet.impression_count.toLocaleString()}</span>
                     <span>{tweet.like_count} likes</span>
                     <span>{tweet.retweet_count} rt</span>
                   </div>
