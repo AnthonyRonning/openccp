@@ -185,7 +185,7 @@ export default function CampDetail() {
                 topTweets?.tweets.map((tweet) => (
                   <TweetCard
                     key={tweet.tweet_id}
-                    id={tweet.tweet_id}
+                    id={String(tweet.tweet_id)}
                     text={tweet.text}
                     likeCount={tweet.like_count}
                     retweetCount={tweet.retweet_count}

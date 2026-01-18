@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
-from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore, Topic
+from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore, Topic, TweetAnalysis
 from backend.scraper import ScraperService, XClient
 from backend.analyzer import AnalyzerService, SummaryService
 from backend.analyzer.topic import TopicService, extract_tweet_ids_from_urls
@@ -892,6 +892,20 @@ def analyze_topic_sides(
             side_b_name=request.side_b_name,
             prompt=request.prompt,
         )
+        
+        # Store classifications in DB
+        for c in classifications:
+            tweet_id = int(c["tweet_id"])
+            analysis = TweetAnalysis(
+                tweet_id=tweet_id,
+                topic_query=request.topic_query,
+                side_a_name=request.side_a_name,
+                side_b_name=request.side_b_name,
+                side=c["side"],
+                reason=c.get("reason"),
+            )
+            db.add(analysis)
+        db.commit()
         
         return schemas.TopicAnalyzeResponse(
             side_a_name=request.side_a_name,

@@ -238,3 +238,23 @@ class AccountCampScore(Base):
 
     def __repr__(self) -> str:
         return f"<AccountCampScore account={self.account_id} camp={self.camp_id} score={self.score}>"
+
+
+class TweetAnalysis(Base):
+    """Stores side classifications from topic analysis."""
+    __tablename__ = "tweet_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tweet_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("tweets.id", ondelete="CASCADE"), nullable=False)
+    topic_query: Mapped[str] = mapped_column(String(500), nullable=False)
+    side_a_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    side_b_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    side: Mapped[str] = mapped_column(String(20), nullable=False)  # 'a', 'b', or 'ambiguous'
+    reason: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    tweet: Mapped["Tweet"] = relationship("Tweet", backref="analyses")
+
+    def __repr__(self) -> str:
+        return f"<TweetAnalysis tweet={self.tweet_id} side={self.side}>"

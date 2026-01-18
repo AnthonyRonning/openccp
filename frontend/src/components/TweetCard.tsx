@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Eye, Heart, Repeat } from 'lucide-react';
+import { Eye, Heart, Repeat, ExternalLink } from 'lucide-react';
 import { TweetText } from './TweetText';
 
 interface TweetCardProps {
-  id: number;
+  id: string;
   text: string;
   likeCount: number;
   retweetCount: number;
@@ -15,9 +15,11 @@ interface TweetCardProps {
   };
   matchedKeywords?: string[];
   score?: number;
+  reason?: string;
 }
 
 export function TweetCard({ 
+  id,
   text, 
   likeCount, 
   retweetCount, 
@@ -25,7 +27,11 @@ export function TweetCard({
   author,
   matchedKeywords,
   score,
+  reason,
 }: TweetCardProps) {
+  const tweetUrl = author ? `https://x.com/${author.username}/status/${id}` : null;
+  const profileUrl = author ? `https://x.com/${author.username}` : null;
+
   return (
     <div className="p-2 rounded bg-secondary/50 text-sm">
       <div className="flex items-start gap-2.5">
@@ -45,6 +51,15 @@ export function TweetCard({
                 {author.name || author.username}
               </Link>
               <span className="text-muted-foreground">@{author.username}</span>
+              <a
+                href={profileUrl!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground"
+                title="View on X"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           )}
           <p className="text-foreground/90 whitespace-pre-wrap">
@@ -65,6 +80,17 @@ export function TweetCard({
               <Repeat className="w-3 h-3" />
               {retweetCount.toLocaleString()}
             </span>
+            {tweetUrl && (
+              <a
+                href={tweetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" />
+                View
+              </a>
+            )}
             {matchedKeywords && matchedKeywords.length > 0 && (
               <div className="flex gap-1">
                 {matchedKeywords.map((kw) => (
@@ -82,6 +108,11 @@ export function TweetCard({
           </div>
         )}
       </div>
+      {reason && (
+        <div className="mt-2 pt-2 border-t border-border">
+          <p className="text-xs text-muted-foreground italic">Reason: {reason}</p>
+        </div>
+      )}
     </div>
   );
 }

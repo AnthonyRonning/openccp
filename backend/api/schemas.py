@@ -404,6 +404,7 @@ class TopicSearchResponse(BaseModel):
 
 class TopicAnalyzeRequest(BaseModel):
     tweet_ids: List[str]
+    topic_query: str  # The original search query
     side_a_name: str
     side_b_name: str
     prompt: str

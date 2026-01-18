@@ -392,6 +392,7 @@ export async function searchTopic(query: string): Promise<TopicSearchResponse> {
 
 export async function analyzeTopicSides(
   tweetIds: string[],
+  topicQuery: string,
   sideAName: string,
   sideBName: string,
   prompt: string
@@ -401,6 +402,7 @@ export async function analyzeTopicSides(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       tweet_ids: tweetIds,
+      topic_query: topicQuery,
       side_a_name: sideAName,
       side_b_name: sideBName,
       prompt,

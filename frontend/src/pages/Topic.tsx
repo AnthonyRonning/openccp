@@ -1,54 +1,28 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Search, Eye, Heart, Repeat } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { searchTopic, analyzeTopicSides } from '../api';
 import type { TopicTweetResult, TopicSearchResponse, TopicAnalyzeResponse } from '../api';
-import { TweetText } from '../components/TweetText';
+import { TweetCard } from '../components/TweetCard';
 
 type SortOption = 'views' | 'likes' | 'comments' | 'ratio';
 type View = 'search' | 'results' | 'analyzed';
 
-function TweetCard({ tweet, reason }: { tweet: TopicTweetResult; reason?: string }) {
+function TopicTweetCard({ tweet, reason }: { tweet: TopicTweetResult; reason?: string }) {
   return (
-    <div className="p-3 rounded-lg bg-secondary/50">
-      <div className="flex items-start gap-2">
-        {tweet.author_profile_image ? (
-          <img src={tweet.author_profile_image} alt="" className="w-8 h-8 rounded-full" />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-muted" />
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 text-xs mb-1">
-            <span className="font-medium text-foreground">{tweet.author_name || tweet.author_username}</span>
-            {tweet.author_username && (
-              <span className="text-muted-foreground">@{tweet.author_username}</span>
-            )}
-          </div>
-          <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-            <TweetText text={tweet.text} />
-          </p>
-          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              {tweet.impression_count.toLocaleString()}
-            </span>
-            <span className="flex items-center gap-1">
-              <Heart className="w-3 h-3" />
-              {tweet.like_count.toLocaleString()}
-            </span>
-            <span className="flex items-center gap-1">
-              <Repeat className="w-3 h-3" />
-              {tweet.retweet_count.toLocaleString()}
-            </span>
-          </div>
-        </div>
-      </div>
-      {reason && (
-        <div className="mt-2 pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground italic">Reason: {reason}</p>
-        </div>
-      )}
-    </div>
+    <TweetCard
+      id={tweet.id}
+      text={tweet.text}
+      likeCount={tweet.like_count}
+      retweetCount={tweet.retweet_count}
+      impressionCount={tweet.impression_count}
+      author={tweet.author_username ? {
+        username: tweet.author_username,
+        name: tweet.author_name || undefined,
+        profileImageUrl: tweet.author_profile_image || undefined,
+      } : undefined}
+      reason={reason}
+    />
   );
 }
 
@@ -80,7 +54,7 @@ export default function Topic() {
       const allTweetIds = searchResults.tweets.flatMap(t => 
         t.top_reply ? [t.id, t.top_reply.id] : [t.id]
       );
-      return analyzeTopicSides(allTweetIds, sideAName, sideBName, sidePrompt);
+      return analyzeTopicSides(allTweetIds, searchResults.query, sideAName, sideBName, sidePrompt);
     },
     onSuccess: (data) => {
       setAnalysisResults(data);
@@ -201,11 +175,11 @@ export default function Topic() {
           <div className="lg:col-span-2 space-y-3">
             {sortedTweets.map((tweet) => (
               <div key={tweet.id}>
-                <TweetCard tweet={tweet} />
+                <TopicTweetCard tweet={tweet} />
                 {tweet.top_reply && (
                   <div className="ml-8 mt-2 border-l-2 border-border pl-3">
                     <p className="text-xs text-muted-foreground mb-1">Top reply</p>
-                    <TweetCard tweet={tweet.top_reply} />
+                    <TopicTweetCard tweet={tweet.top_reply} />
                   </div>
                 )}
               </div>
@@ -355,7 +329,7 @@ export default function Topic() {
           <div className="space-y-3">
             {sideATweets.map(({ tweet, classification }) => (
               <div key={tweet.id}>
-                <TweetCard tweet={tweet} reason={classification?.reason} />
+                <TopicTweetCard tweet={tweet} reason={classification?.reason} />
                 {tweet.top_reply && (
                   <div className={`mt-2 border-l-2 pl-3 ${
                     getClassification(tweet.top_reply.id)?.side === 'b'
@@ -363,7 +337,7 @@ export default function Topic() {
                       : 'ml-8 border-border'
                   }`}>
                     <p className="text-xs text-muted-foreground mb-1">Top reply</p>
-                    <TweetCard 
+                    <TopicTweetCard 
                       tweet={tweet.top_reply} 
                       reason={getClassification(tweet.top_reply.id)?.reason} 
                     />
@@ -377,7 +351,7 @@ export default function Topic() {
           <div className="space-y-3">
             {sideBTweets.map(({ tweet, classification }) => (
               <div key={tweet.id}>
-                <TweetCard tweet={tweet} reason={classification?.reason} />
+                <TopicTweetCard tweet={tweet} reason={classification?.reason} />
                 {tweet.top_reply && (
                   <div className={`mt-2 border-l-2 pl-3 ${
                     getClassification(tweet.top_reply.id)?.side === 'a'
@@ -385,7 +359,7 @@ export default function Topic() {
                       : 'ml-8 border-border'
                   }`}>
                     <p className="text-xs text-muted-foreground mb-1">Top reply</p>
-                    <TweetCard 
+                    <TopicTweetCard 
                       tweet={tweet.top_reply} 
                       reason={getClassification(tweet.top_reply.id)?.reason} 
                     />
@@ -404,7 +378,7 @@ export default function Topic() {
             </h2>
             <div className="space-y-3">
               {ambiguousTweets.map(({ tweet, classification }) => (
-                <TweetCard key={tweet.id} tweet={tweet} reason={classification?.reason} />
+                <TopicTweetCard key={tweet.id} tweet={tweet} reason={classification?.reason} />
               ))}
             </div>
           </div>
