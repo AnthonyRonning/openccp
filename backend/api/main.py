@@ -686,3 +686,63 @@ def generate_account_summary(
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate summary: {str(e)}")
+
+
+@app.post("/api/accounts/{username}/report")
+def generate_account_report(
+    username: str,
+    request: schemas.ReportRequest,
+    db: Session = Depends(get_db),
+):
+    """Generate a markdown report for an account based on summary and analysis data."""
+    try:
+        # Get account from DB
+        account = db.query(Account).filter(Account.username == username).first()
+        if not account:
+            raise HTTPException(status_code=404, detail=f"Account @{username} not found")
+        
+        account_data = {
+            "username": account.username,
+            "name": account.name,
+            "description": account.description,
+            "location": account.location,
+            "twitter_created_at": str(account.twitter_created_at) if account.twitter_created_at else None,
+            "followers_count": account.followers_count,
+            "following_count": account.following_count,
+            "tweet_count": account.tweet_count,
+        }
+        
+        # Convert summary data to dict format expected by generate_report
+        summary_data = {
+            "topics": {
+                name: {
+                    "noticing": topic.noticing,
+                    "comment": topic.comment,
+                    "tweets": [{"id": t.id, "text": t.text, "like_count": t.like_count, "retweet_count": t.retweet_count} for t in topic.tweets]
+                }
+                for name, topic in request.summary.topics.items()
+            }
+        }
+        
+        # Get analysis data if available
+        analysis_data = None
+        if request.include_camps:
+            analyzer = AnalyzerService(db)
+            scores = analyzer.get_account_scores(account.id)
+            if scores:
+                analysis_data = {
+                    "scores": [
+                        {"camp_name": s.camp.name, "score": s.score}
+                        for s in scores
+                    ]
+                }
+        
+        summary_service = SummaryService()
+        report = summary_service.generate_report(account_data, summary_data, analysis_data)
+        
+        return {"report": report}
+    
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")

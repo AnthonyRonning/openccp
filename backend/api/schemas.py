@@ -345,6 +345,11 @@ class SummaryResponse(BaseModel):
     topics: Dict[str, TopicSentiment]
 
 
+class ReportRequest(BaseModel):
+    summary: SummaryResponse
+    include_camps: bool = True
+
+
 # === Topic Schemas (Configurable) ===
 
 class TopicBase(BaseModel):

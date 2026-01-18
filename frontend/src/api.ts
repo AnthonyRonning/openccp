@@ -328,3 +328,21 @@ export async function generateAccountSummary(
   }
   return res.json();
 }
+
+export async function generateAccountReport(
+  username: string,
+  summary: AccountSummary,
+  includeCamps = true
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/accounts/${username}/report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ summary, include_camps: includeCamps }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to generate report');
+  }
+  const data = await res.json();
+  return data.report;
+}

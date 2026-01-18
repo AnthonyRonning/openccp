@@ -99,3 +99,55 @@ class SummaryService:
                 },
                 "raw_response": content,
             }
+
+    def generate_report(self, account_data: dict, summary_data: dict, analysis_data: dict) -> str:
+        """Generate a markdown report summarizing an account."""
+        # Build context for the AI
+        context_parts = []
+        
+        # Account info
+        context_parts.append(f"Account: @{account_data['username']}")
+        if account_data.get('name'):
+            context_parts.append(f"Name: {account_data['name']}")
+        if account_data.get('description'):
+            context_parts.append(f"Bio: {account_data['description']}")
+        if account_data.get('location'):
+            context_parts.append(f"Location: {account_data['location']}")
+        if account_data.get('twitter_created_at'):
+            context_parts.append(f"Joined: {account_data['twitter_created_at']}")
+        context_parts.append(f"Followers: {account_data.get('followers_count', 0):,}")
+        context_parts.append(f"Following: {account_data.get('following_count', 0):,}")
+        context_parts.append(f"Tweets: {account_data.get('tweet_count', 0):,}")
+        
+        # Topic summaries
+        context_parts.append("\n## Topic Analysis")
+        for topic_name, sentiment in summary_data.get('topics', {}).items():
+            context_parts.append(f"\n### {topic_name}")
+            context_parts.append(f"Active: {'Yes' if sentiment.get('noticing') else 'No'}")
+            context_parts.append(f"Analysis: {sentiment.get('comment', 'N/A')}")
+            if sentiment.get('tweets'):
+                context_parts.append("Example tweets:")
+                for tweet in sentiment['tweets']:
+                    context_parts.append(f"- \"{tweet['text'][:200]}...\" (❤️ {tweet.get('like_count', 0)}, 🔁 {tweet.get('retweet_count', 0)})")
+        
+        # Camp analysis if available
+        if analysis_data and analysis_data.get('scores'):
+            context_parts.append("\n## Camp Scores")
+            for score in analysis_data['scores']:
+                context_parts.append(f"- {score['camp_name']}: {score['score']:.1f}")
+        
+        context = "\n".join(context_parts)
+        
+        prompt = f"""Based on the following data about a Twitter/X account, write a concise 3-paragraph markdown report summarizing this person's online presence and positions.
+
+{context}
+
+Write in third person. Be concrete and specific, citing example tweets where relevant. Include tweet URLs in the format https://x.com/{account_data['username']}/status/[tweet_id] when referencing specific tweets.
+
+Format as markdown with a title header. Keep it factual and analytical."""
+
+        chat = self.client.chat.create(model="grok-4-1-fast")
+        chat.append(user(prompt))
+        response = chat.sample()
+        
+        return response.content if hasattr(response, 'content') else str(response)
