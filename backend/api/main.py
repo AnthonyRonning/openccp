@@ -1055,7 +1055,6 @@ def crowdsource_tweets(
                     text=tweet_data.text,
                     twitter_created_at=parse_twitter_date(tweet_data.created_at) if tweet_data.created_at else None,
                     conversation_id=int(tweet_data.conversation_id) if tweet_data.conversation_id else None,
-                    in_reply_to_status_id=int(tweet_data.in_reply_to_status_id) if tweet_data.in_reply_to_status_id else None,
                     in_reply_to_user_id=int(tweet_data.in_reply_to_user_id) if tweet_data.in_reply_to_user_id else None,
                     retweet_count=tweet_data.retweet_count,
                     reply_count=tweet_data.reply_count,
