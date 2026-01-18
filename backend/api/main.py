@@ -780,10 +780,16 @@ def search_topic(
         # Store tweets and build response
         results = []
         for tweet_data in fetched_tweets:
-            scraper._upsert_tweet(tweet_data)
-            
-            # Get author info
+            # Fetch and upsert author first (required due to FK constraint)
             author = db.query(Account).filter(Account.id == tweet_data.account_id).first()
+            if not author:
+                author_data = x_client.get_user_by_id(tweet_data.account_id)
+                if author_data:
+                    scraper._upsert_account(author_data, is_seed=False)
+                    db.commit()
+                    author = db.query(Account).filter(Account.id == tweet_data.account_id).first()
+            
+            scraper._upsert_tweet(tweet_data)
             
             # Get top reply for this tweet
             tweet_url = f"https://x.com/user/status/{tweet_data.id}"
@@ -796,8 +802,16 @@ def search_topic(
                     reply_tweets = x_client.get_tweets_by_ids(reply_ids)
                     if reply_tweets:
                         reply_data = reply_tweets[0]
-                        scraper._upsert_tweet(reply_data)
+                        # Fetch and upsert reply author
                         reply_author = db.query(Account).filter(Account.id == reply_data.account_id).first()
+                        if not reply_author:
+                            reply_author_data = x_client.get_user_by_id(reply_data.account_id)
+                            if reply_author_data:
+                                scraper._upsert_account(reply_author_data, is_seed=False)
+                                db.commit()
+                                reply_author = db.query(Account).filter(Account.id == reply_data.account_id).first()
+                        
+                        scraper._upsert_tweet(reply_data)
                         top_reply = schemas.TopicTweetResult(
                             id=reply_data.id,
                             text=reply_data.text,
