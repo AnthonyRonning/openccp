@@ -1,15 +1,42 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { fetchAccounts } from '../api';
 
 export default function Accounts() {
   const [seedsOnly, setSeedsOnly] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'followers' | 'created'>('followers');
 
   const { data, isLoading } = useQuery({
     queryKey: ['accounts', seedsOnly],
     queryFn: () => fetchAccounts(seedsOnly),
   });
+
+  const filteredAndSorted = useMemo(() => {
+    if (!data?.accounts) return [];
+    let accounts = [...data.accounts];
+    
+    // Filter by search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      accounts = accounts.filter(a => 
+        a.username.toLowerCase().includes(q) || 
+        (a.name && a.name.toLowerCase().includes(q))
+      );
+    }
+    
+    // Sort
+    accounts.sort((a, b) => {
+      if (sortBy === 'followers') {
+        return b.followers_count - a.followers_count;
+      } else {
+        return new Date(b.twitter_created_at || 0).getTime() - new Date(a.twitter_created_at || 0).getTime();
+      }
+    });
+    
+    return accounts;
+  }, [data?.accounts, search, sortBy]);
 
   return (
     <div className="space-y-4">
@@ -17,7 +44,7 @@ export default function Accounts() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Accounts</h1>
           <p className="text-sm text-muted-foreground">
-            {data?.total || 0} accounts in database
+            {filteredAndSorted.length} of {data?.total || 0} accounts
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
@@ -31,11 +58,35 @@ export default function Accounts() {
         </label>
       </div>
 
+      <div className="flex gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or username..."
+          className="flex-1 px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground"
+        />
+        <div className="flex text-sm border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setSortBy('followers')}
+            className={`px-3 py-2 ${sortBy === 'followers' ? 'bg-background text-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            Followers
+          </button>
+          <button
+            onClick={() => setSortBy('created')}
+            className={`px-3 py-2 ${sortBy === 'created' ? 'bg-background text-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            Created
+          </button>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="text-muted-foreground">Loading...</div>
       ) : (
         <div className="grid gap-2">
-          {data?.accounts.map((account) => (
+          {filteredAndSorted.map((account) => (
             <Link
               key={account.id}
               to={`/accounts/${account.username}`}
