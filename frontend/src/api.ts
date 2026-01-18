@@ -346,3 +346,69 @@ export async function generateAccountReport(
   const data = await res.json();
   return data.report;
 }
+
+// Topic Search types and API
+export interface TopicTweetResult {
+  id: number;
+  text: string;
+  like_count: number;
+  retweet_count: number;
+  impression_count: number;
+  author_username: string | null;
+  author_name: string | null;
+  author_profile_image: string | null;
+  top_reply: TopicTweetResult | null;
+}
+
+export interface TopicSearchResponse {
+  query: string;
+  tweets: TopicTweetResult[];
+}
+
+export interface TweetClassification {
+  tweet_id: number;
+  side: 'a' | 'b' | 'ambiguous';
+  reason: string;
+}
+
+export interface TopicAnalyzeResponse {
+  side_a_name: string;
+  side_b_name: string;
+  classifications: TweetClassification[];
+}
+
+export async function searchTopic(query: string): Promise<TopicSearchResponse> {
+  const res = await fetch(`${API_BASE}/topic/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to search topic');
+  }
+  return res.json();
+}
+
+export async function analyzeTopicSides(
+  tweetIds: number[],
+  sideAName: string,
+  sideBName: string,
+  prompt: string
+): Promise<TopicAnalyzeResponse> {
+  const res = await fetch(`${API_BASE}/topic/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tweet_ids: tweetIds,
+      side_a_name: sideAName,
+      side_b_name: sideBName,
+      prompt,
+    }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to analyze sides');
+  }
+  return res.json();
+}

@@ -11,6 +11,7 @@ from typing import Optional, List
 from backend.db import get_db, Account, Tweet, Follow, Keyword, Camp, AccountCampScore, Topic
 from backend.scraper import ScraperService, XClient
 from backend.analyzer import AnalyzerService, SummaryService
+from backend.analyzer.topic import TopicService, extract_tweet_ids_from_urls
 from backend.api import schemas
 
 
@@ -749,3 +750,122 @@ def generate_account_report(
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+
+
+# === Topic Search ===
+
+@app.post("/api/topic/search", response_model=schemas.TopicSearchResponse)
+def search_topic(
+    request: schemas.TopicSearchRequest,
+    db: Session = Depends(get_db),
+):
+    """Search for top tweets about a topic and fetch their top replies."""
+    try:
+        topic_service = TopicService()
+        x_client = XClient()
+        scraper = ScraperService(db)
+        
+        # Search for tweets about the topic
+        search_result = topic_service.search_topic(request.query, limit=10)
+        tweet_urls = [t["url"] for t in search_result.get("tweets", []) if t.get("url")]
+        
+        # Extract tweet IDs and fetch full tweet data
+        tweet_ids = extract_tweet_ids_from_urls(tweet_urls)
+        if not tweet_ids:
+            return schemas.TopicSearchResponse(query=request.query, tweets=[])
+        
+        # Fetch tweets from X API
+        fetched_tweets = x_client.get_tweets_by_ids(tweet_ids)
+        
+        # Store tweets and build response
+        results = []
+        for tweet_data in fetched_tweets:
+            scraper._upsert_tweet(tweet_data)
+            
+            # Get author info
+            author = db.query(Account).filter(Account.id == tweet_data.account_id).first()
+            
+            # Get top reply for this tweet
+            tweet_url = f"https://x.com/user/status/{tweet_data.id}"
+            reply_url = topic_service.get_top_reply(tweet_url)
+            
+            top_reply = None
+            if reply_url:
+                reply_ids = extract_tweet_ids_from_urls([reply_url])
+                if reply_ids:
+                    reply_tweets = x_client.get_tweets_by_ids(reply_ids)
+                    if reply_tweets:
+                        reply_data = reply_tweets[0]
+                        scraper._upsert_tweet(reply_data)
+                        reply_author = db.query(Account).filter(Account.id == reply_data.account_id).first()
+                        top_reply = schemas.TopicTweetResult(
+                            id=reply_data.id,
+                            text=reply_data.text,
+                            like_count=reply_data.like_count,
+                            retweet_count=reply_data.retweet_count,
+                            impression_count=reply_data.impression_count,
+                            author_username=reply_author.username if reply_author else None,
+                            author_name=reply_author.name if reply_author else None,
+                            author_profile_image=reply_author.profile_image_url if reply_author else None,
+                        )
+            
+            results.append(schemas.TopicTweetResult(
+                id=tweet_data.id,
+                text=tweet_data.text,
+                like_count=tweet_data.like_count,
+                retweet_count=tweet_data.retweet_count,
+                impression_count=tweet_data.impression_count,
+                author_username=author.username if author else None,
+                author_name=author.name if author else None,
+                author_profile_image=author.profile_image_url if author else None,
+                top_reply=top_reply,
+            ))
+        
+        db.commit()
+        return schemas.TopicSearchResponse(query=request.query, tweets=results)
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to search topic: {str(e)}")
+
+
+@app.post("/api/topic/analyze", response_model=schemas.TopicAnalyzeResponse)
+def analyze_topic_sides(
+    request: schemas.TopicAnalyzeRequest,
+    db: Session = Depends(get_db),
+):
+    """Analyze tweets and classify them into two sides."""
+    try:
+        # Fetch tweets from DB
+        tweets = db.query(Tweet).filter(Tweet.id.in_(request.tweet_ids)).all()
+        if not tweets:
+            raise HTTPException(status_code=404, detail="No tweets found")
+        
+        # Build tweet data for analysis
+        tweets_data = [
+            {"id": t.id, "text": t.text}
+            for t in tweets
+        ]
+        
+        topic_service = TopicService()
+        classifications = topic_service.analyze_sides(
+            tweets_data=tweets_data,
+            side_a_name=request.side_a_name,
+            side_b_name=request.side_b_name,
+            prompt=request.prompt,
+        )
+        
+        return schemas.TopicAnalyzeResponse(
+            side_a_name=request.side_a_name,
+            side_b_name=request.side_b_name,
+            classifications=[
+                schemas.TweetClassification(
+                    tweet_id=c["tweet_id"],
+                    side=c["side"],
+                    reason=c["reason"],
+                )
+                for c in classifications
+            ],
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to analyze sides: {str(e)}")

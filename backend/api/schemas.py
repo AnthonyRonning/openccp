@@ -377,3 +377,45 @@ class TopicUpdateRequest(BaseModel):
     description: Optional[str] = None
     enabled: Optional[bool] = None
     sort_order: Optional[int] = None
+
+
+# === Topic Search Schemas ===
+
+class TopicSearchRequest(BaseModel):
+    query: str
+
+
+class TopicTweetResult(BaseModel):
+    id: int
+    text: str
+    like_count: int = 0
+    retweet_count: int = 0
+    impression_count: int = 0
+    author_username: Optional[str] = None
+    author_name: Optional[str] = None
+    author_profile_image: Optional[str] = None
+    top_reply: Optional['TopicTweetResult'] = None
+
+
+class TopicSearchResponse(BaseModel):
+    query: str
+    tweets: List[TopicTweetResult]
+
+
+class TopicAnalyzeRequest(BaseModel):
+    tweet_ids: List[int]
+    side_a_name: str
+    side_b_name: str
+    prompt: str
+
+
+class TweetClassification(BaseModel):
+    tweet_id: int
+    side: str  # "a", "b", or "ambiguous"
+    reason: str
+
+
+class TopicAnalyzeResponse(BaseModel):
+    side_a_name: str
+    side_b_name: str
+    classifications: List[TweetClassification]
