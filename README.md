@@ -403,6 +403,40 @@ The backend runs at `http://localhost:8000` and frontend at `http://localhost:51
 | `just analyze` | Analyze all accounts for camp membership |
 | `just stats` | Show database statistics |
 
+## Chrome Extension (Crowdsourced Tweet Collection)
+
+The extension captures tweets as you browse Twitter/X and sends them to your backend - completely free! No X API costs for tweets.
+
+### Installing the Extension
+
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable **Developer mode** (toggle in top right)
+3. Click **Load unpacked**
+4. Select the `extension/` folder from this repo
+
+### Using the Extension
+
+1. Click the extension icon in your toolbar to see the popup
+2. Toggle **On/Off** to enable/disable collection
+3. Browse Twitter normally - tweets are captured automatically
+4. Stats show tweets collected, sent, and queued
+
+### How It Works
+
+- Intercepts Twitter's internal XHR API calls
+- Parses tweet objects (text, metrics, author info)
+- Batches tweets and sends to backend every 5 seconds
+- Backend upserts tweets and accounts (deduplicates automatically)
+
+### Cost Savings
+
+| Method | Cost per Tweet |
+|--------|---------------|
+| X API | $0.005 |
+| Crowdsourced | $0.00 |
+
+Profile lookups (when needed for new accounts) still cost $0.01 each via X API.
+
 ## Rate Limiting Notes
 
 X API has rate limits that vary by tier:
