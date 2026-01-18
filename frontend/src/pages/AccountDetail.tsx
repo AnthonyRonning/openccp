@@ -328,6 +328,11 @@ export default function AccountDetail() {
           {account.location && (
             <p className="text-xs text-muted-foreground mt-1">{account.location}</p>
           )}
+          {account.twitter_created_at && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Joined {new Date(account.twitter_created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </p>
+          )}
         </div>
       </div>
 
