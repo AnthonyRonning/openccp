@@ -347,6 +347,38 @@ export async function generateAccountReport(
   return data.report;
 }
 
+export interface FreeformTweet {
+  id: string;
+  text: string;
+  like_count: number;
+  retweet_count: number;
+  impression_count: number;
+  author_username: string | null;
+  author_name: string | null;
+  author_profile_image: string | null;
+}
+
+export interface FreeformResponse {
+  report: string;
+  referenced_tweets: FreeformTweet[];
+}
+
+export async function generateFreeformSummary(
+  username: string,
+  prompt: string
+): Promise<FreeformResponse> {
+  const res = await fetch(`${API_BASE}/accounts/${username}/freeform`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || 'Failed to generate freeform summary');
+  }
+  return res.json();
+}
+
 // Topic Search types and API
 export interface TopicTweetResult {
   id: string;  // Use string to avoid JS number precision issues with large tweet IDs

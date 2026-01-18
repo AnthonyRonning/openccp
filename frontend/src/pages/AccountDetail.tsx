@@ -10,12 +10,13 @@ import {
   fetchAccountAnalysis,
   generateAccountSummary,
   generateAccountReport,
+  generateFreeformSummary,
   fetchTopics,
   createTopic,
   updateTopic,
   deleteTopic,
 } from '../api';
-import type { AccountSummary } from '../api';
+import type { AccountSummary, FreeformResponse, FreeformTweet } from '../api';
 import { TweetCard } from '../components/TweetCard';
 
 function AccountCard({ account }: { account: any }) {
@@ -308,6 +309,144 @@ function SummaryCard({ username, account }: { username: string; account: { name:
   );
 }
 
+function FreeformCard({ username }: { username: string }) {
+  const [prompt, setPrompt] = useState('');
+  const [result, setResult] = useState<FreeformResponse | null>(null);
+  
+  const mutation = useMutation({
+    mutationFn: () => generateFreeformSummary(username, prompt),
+    onSuccess: (data) => setResult(data),
+  });
+
+  const downloadMarkdown = () => {
+    if (!result) return;
+    const blob = new Blob([result.report], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${username}-freeform.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Replace tweet URLs with placeholders and render inline
+  const renderReportWithTweets = () => {
+    if (!result) return null;
+    
+    const tweetMap = new Map<string, FreeformTweet>();
+    for (const tweet of result.referenced_tweets) {
+      tweetMap.set(tweet.id, tweet);
+    }
+    
+    // Split report by tweet URLs and render
+    const tweetUrlPattern = /https?:\/\/(?:x\.com|twitter\.com)\/\w+\/status\/(\d+)/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+    
+    const reportText = result.report;
+    while ((match = tweetUrlPattern.exec(reportText)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(<span key={key++}>{reportText.slice(lastIndex, match.index)}</span>);
+      }
+      
+      const tweetId = match[1];
+      const tweet = tweetMap.get(tweetId);
+      
+      if (tweet) {
+        parts.push(
+          <div key={key++} className="my-3">
+            <TweetCard
+              id={tweet.id}
+              text={tweet.text}
+              likeCount={tweet.like_count}
+              retweetCount={tweet.retweet_count}
+              impressionCount={tweet.impression_count}
+              author={tweet.author_username ? {
+                username: tweet.author_username,
+                name: tweet.author_name || undefined,
+                profileImageUrl: tweet.author_profile_image || undefined,
+              } : undefined}
+            />
+          </div>
+        );
+      } else {
+        // Keep the URL as a link if we couldn't fetch the tweet
+        parts.push(
+          <a key={key++} href={match[0]} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            {match[0]}
+          </a>
+        );
+      }
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < reportText.length) {
+      parts.push(<span key={key++}>{reportText.slice(lastIndex)}</span>);
+    }
+    
+    return parts;
+  };
+
+  return (
+    <div className="bg-card rounded-xl p-4 ring-1 ring-foreground/10 shadow-xs">
+      <h2 className="text-sm font-medium text-foreground mb-3">Freeform Analysis</h2>
+      
+      {!result ? (
+        <div className="space-y-3">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Ask anything about this account... e.g., 'What are their views on Bitcoin?' or 'Summarize their political positions'"
+            rows={3}
+            className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground resize-none"
+          />
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!prompt.trim() || mutation.isPending}
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {mutation.isPending && (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            )}
+            {mutation.isPending ? 'Analyzing...' : 'Analyze'}
+          </button>
+          {mutation.isError && (
+            <p className="text-destructive text-sm">
+              {mutation.error instanceof Error ? mutation.error.message : 'Failed to analyze'}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setResult(null)}
+              className="text-sm px-3 py-1 bg-secondary hover:bg-secondary/80 text-foreground rounded transition-colors"
+            >
+              New Query
+            </button>
+            <button
+              onClick={downloadMarkdown}
+              className="text-sm px-3 py-1 bg-secondary hover:bg-secondary/80 text-foreground rounded transition-colors flex items-center gap-1"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              Save as Markdown
+            </button>
+          </div>
+          <div className="prose prose-sm prose-invert max-w-none text-foreground/90 whitespace-pre-wrap">
+            {renderReportWithTweets()}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AccountDetail() {
   const { username } = useParams<{ username: string }>();
   const [tweetSort, setTweetSort] = useState<'latest' | 'top'>('latest');
@@ -466,6 +605,9 @@ export default function AccountDetail() {
 
       {/* AI Topic Summary */}
       <SummaryCard username={username!} account={account} />
+
+      {/* Freeform Analysis */}
+      <FreeformCard username={username!} />
 
       {/* Content Grid */}
       <div className="grid md:grid-cols-3 gap-4">

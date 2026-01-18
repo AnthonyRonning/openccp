@@ -347,6 +347,10 @@ class ReportRequest(BaseModel):
     include_camps: bool = True
 
 
+class FreeformRequest(BaseModel):
+    prompt: str
+
+
 # === Topic Schemas (Configurable) ===
 
 class TopicBase(BaseModel):

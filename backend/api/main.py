@@ -791,6 +791,88 @@ def generate_account_report(
         raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
 
 
+@app.post("/api/accounts/{username}/freeform")
+def generate_freeform_summary(
+    username: str,
+    request: schemas.FreeformRequest,
+    db: Session = Depends(get_db),
+):
+    """Generate a freeform AI summary based on a custom prompt."""
+    import os
+    import json
+    from xai_sdk import Client
+    from xai_sdk.chat import user
+    from xai_sdk.tools import x_search
+    
+    try:
+        api_key = os.environ.get("XAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="XAI_API_KEY not set")
+        
+        client = Client(api_key=api_key)
+        
+        prompt = f"""Analyze the X/Twitter account @{username} based on this request:
+
+{request.prompt}
+
+When referencing specific tweets, include the full tweet URL in the format https://x.com/username/status/TWEET_ID
+
+Provide a detailed response."""
+
+        chat = client.chat.create(model="grok-4-1-fast", tools=[x_search()])
+        chat.append(user(prompt))
+        response = chat.sample()
+        
+        content = response.content if hasattr(response, 'content') else str(response)
+        
+        # Extract tweet URLs from the response
+        tweet_url_pattern = re.compile(r'https?://(?:x\.com|twitter\.com)/\w+/status/(\d+)')
+        tweet_ids = [int(m) for m in tweet_url_pattern.findall(content)]
+        
+        # Fetch and store tweets
+        referenced_tweets = []
+        if tweet_ids:
+            try:
+                x_client = XClient()
+                scraper = ScraperService(db)
+                fetched_tweets = x_client.get_tweets_by_ids(list(set(tweet_ids)))
+                
+                # Ensure authors are in DB first
+                author_ids = list(set(t.account_id for t in fetched_tweets))
+                for author_id in author_ids:
+                    if not db.query(Account).filter(Account.id == author_id).first():
+                        author_data = x_client.get_user_by_id(author_id)
+                        if author_data:
+                            scraper._upsert_account(author_data, is_seed=False)
+                db.commit()
+                
+                # Store tweets
+                for tweet_data in fetched_tweets:
+                    scraper._upsert_tweet(tweet_data)
+                    author = db.query(Account).filter(Account.id == tweet_data.account_id).first()
+                    referenced_tweets.append({
+                        "id": str(tweet_data.id),
+                        "text": tweet_data.text,
+                        "like_count": tweet_data.like_count,
+                        "retweet_count": tweet_data.retweet_count,
+                        "impression_count": tweet_data.impression_count,
+                        "author_username": author.username if author else None,
+                        "author_name": author.name if author else None,
+                        "author_profile_image": author.profile_image_url if author else None,
+                    })
+                db.commit()
+            except Exception as e:
+                print(f"Warning: Could not fetch tweets: {e}")
+        
+        return {
+            "report": content,
+            "referenced_tweets": referenced_tweets,
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate freeform summary: {str(e)}")
+
+
 # === Topic Search ===
 
 @app.post("/api/topic/search", response_model=schemas.TopicSearchResponse)
