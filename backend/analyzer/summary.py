@@ -146,7 +146,12 @@ Write in third person. Be concrete and specific, citing example tweets where rel
 
 Format as markdown with a title header. Keep it factual and analytical."""
 
-        chat = self.client.chat.create(model="grok-4-1-fast")
+        chat = self.client.chat.create(
+            model="grok-4-1-fast",
+            tools=[
+                x_search(allowed_x_handles=[account_data['username']]),
+            ],
+        )
         chat.append(user(prompt))
         response = chat.sample()
         
