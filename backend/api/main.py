@@ -260,6 +260,7 @@ def get_account_followers(
 @app.post("/api/scrape", response_model=schemas.ScrapeResponse)
 def scrape_account(request: schemas.ScrapeRequest, db: Session = Depends(get_db)):
     """Scrape a Twitter account and its network."""
+    from backend import config
     scraper = ScraperService(db)
     
     account, stats = scraper.scrape_account(
@@ -267,6 +268,15 @@ def scrape_account(request: schemas.ScrapeRequest, db: Session = Depends(get_db)
         include_following=request.include_following,
         include_followers=request.include_followers,
     )
+    
+    # Fetch tweets for seed account only
+    tweets_added = 0
+    if account and config.MAX_TWEETS_PER_ACCOUNT > 0:
+        tweets_added = scraper.fetch_tweets_for_account(
+            account.id, 
+            max_results=config.MAX_TWEETS_PER_ACCOUNT
+        )
+    stats["tweets_added"] = tweets_added
     
     return schemas.ScrapeResponse(
         account=account,
