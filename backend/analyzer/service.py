@@ -69,10 +69,8 @@ class AnalyzerService:
         """
         Analyze a single account across all camps.
         
-        Assumes sentiment analysis has already been run (via analyze_all_accounts).
-        
         Flow:
-        1. Find text matches in tweets/bios
+        1. Find text matches in tweets
         2. Filter by expected_sentiment (using saved sentiment)
         3. Compute scores
         
@@ -86,11 +84,6 @@ class AnalyzerService:
             keywords = self.db.query(Keyword).filter(Keyword.camp_id == camp.id).all()
             if not keywords:
                 continue
-
-            # --- BIO ANALYSIS ---
-            bio_text_matches = self._find_text_matches(account.description or "", keywords)
-            bio_matches = self._filter_by_sentiment(bio_text_matches, account.bio_sentiment)
-            bio_score = self._compute_score(bio_matches) * 2  # Bio gets 2x weight
 
             # --- TWEET ANALYSIS ---
             tweet_score = 0.0
@@ -111,17 +104,12 @@ class AnalyzerService:
                             tweet_matches_agg[kw.term] = {"term": kw.term, "count": 0, "weight": kw.weight, "expected_sentiment": kw.expected_sentiment}
                         tweet_matches_agg[kw.term]["count"] += count
 
-            total_score = bio_score + tweet_score
-
             results[camp.id] = {
                 "camp": camp,
-                "score": total_score,
-                "bio_score": bio_score,
+                "score": tweet_score,
+                "bio_score": 0.0,
                 "tweet_score": tweet_score,
-                "bio_matches": [
-                    {"term": kw.term, "count": count, "weight": kw.weight}
-                    for kw, count in bio_matches
-                ],
+                "bio_matches": [],
                 "tweet_matches": list(tweet_matches_agg.values()),
                 "matched_tweets": matched_tweet_ids,  # [(tweet_id, [(kw, count), ...])]
             }
