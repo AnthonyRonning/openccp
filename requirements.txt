@@ -1,3 +1,8 @@
 xdk
 python-dotenv
 openai
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+xai-sdk

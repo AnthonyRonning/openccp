@@ -2,9 +2,13 @@
 FastAPI application for OpenCCP.
 """
 
+import os
 import re
+from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
@@ -897,3 +901,23 @@ def analyze_topic_sides(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to analyze sides: {str(e)}")
+
+
+# === Static Files (Frontend) ===
+# Serve React frontend in production (must be last to not override API routes)
+
+STATIC_DIR = Path(__file__).parent.parent.parent / "static"
+
+if STATIC_DIR.exists():
+    # Serve static assets (js, css, images)
+    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+    
+    # Catch-all route for SPA - serve index.html for any non-API route
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # If it's an API route, this won't be reached (API routes are defined above)
+        # For any other route, serve the SPA
+        index_path = STATIC_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Frontend not found")

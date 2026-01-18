@@ -26,6 +26,10 @@
           # Utilities
           jq
           just
+          
+          # Deployment
+          flyctl
+          podman
         ];
         
         darwinOnlyInputs = with pkgs; [
