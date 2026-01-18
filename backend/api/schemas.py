@@ -113,17 +113,14 @@ class StatsResponse(BaseModel):
 
 class ScrapeRequest(BaseModel):
     username: str
-    include_tweets: bool = True
     include_following: bool = True
     include_followers: bool = True
 
 
 class ScrapeStats(BaseModel):
     account_scraped: bool
-    tweets_added: int
     following_added: int
     followers_added: int
-    connections_scraped: int
     errors: List[str]
 
 

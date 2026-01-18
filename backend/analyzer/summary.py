@@ -1,14 +1,51 @@
 """
 AI-powered account summary generation using xAI (Grok) with x_search tool.
+Includes smart tweet fetching - only fetches tweets that Grok finds relevant.
 """
 
 import os
+import re
 import json
-from typing import Optional, List
+from typing import Optional, List, Set
 
 from xai_sdk import Client
 from xai_sdk.chat import user
 from xai_sdk.tools import x_search
+
+
+def extract_tweet_ids_from_urls(urls: List[str]) -> List[int]:
+    """Extract tweet IDs from X/Twitter URLs.
+    
+    Handles formats like:
+    - https://x.com/username/status/1234567890
+    - https://twitter.com/username/status/1234567890
+    """
+    tweet_ids = []
+    pattern = r'(?:x\.com|twitter\.com)/\w+/status/(\d+)'
+    
+    for url in urls:
+        match = re.search(pattern, url)
+        if match:
+            try:
+                tweet_ids.append(int(match.group(1)))
+            except ValueError:
+                continue
+    
+    return tweet_ids
+
+
+def extract_all_tweet_ids_from_summary(summary_data: dict) -> List[int]:
+    """Extract all tweet IDs from a summary response."""
+    all_ids: Set[int] = set()
+    
+    topics = summary_data.get('topics', {})
+    for topic_data in topics.values():
+        examples = topic_data.get('examples', [])
+        if examples:
+            ids = extract_tweet_ids_from_urls(examples)
+            all_ids.update(ids)
+    
+    return list(all_ids)
 
 
 def build_prompt(username: str, topics: List[str]) -> str:
@@ -99,6 +136,47 @@ class SummaryService:
                 },
                 "raw_response": content,
             }
+
+    def generate_summary_and_save_tweets(
+        self,
+        username: str,
+        topics: List[str],
+        db_session,
+    ) -> dict:
+        """
+        Generate summary and automatically fetch/save any tweets Grok finds.
+        
+        This is the smart approach: only fetch tweets that are proven relevant
+        by AI, instead of bulk scraping all tweets.
+        
+        Returns:
+            Summary dict with added 'tweets_saved' count
+        """
+        from backend.scraper.client import XClient
+        from backend.scraper.service import ScraperService
+        
+        # Generate the summary (Grok searches for relevant tweets)
+        summary = self.generate_summary(username, topics)
+        
+        # Extract tweet IDs from the examples Grok found
+        tweet_ids = extract_all_tweet_ids_from_summary(summary)
+        
+        tweets_saved = 0
+        if tweet_ids:
+            # Fetch the actual tweet data from X API
+            client = XClient()
+            scraper = ScraperService(db_session, client)
+            
+            tweets = client.get_tweets_by_ids(tweet_ids)
+            for tweet in tweets:
+                scraper._upsert_tweet(tweet)
+                tweets_saved += 1
+            
+            db_session.commit()
+            print(f"  Saved {tweets_saved} relevant tweets from Grok search")
+        
+        summary['tweets_saved'] = tweets_saved
+        return summary
 
     def generate_report(self, account_data: dict, summary_data: dict, analysis_data: dict) -> str:
         """Generate a markdown report summarizing an account."""

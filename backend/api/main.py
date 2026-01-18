@@ -131,7 +131,6 @@ def scrape_account(request: schemas.ScrapeRequest, db: Session = Depends(get_db)
     
     account, stats = scraper.scrape_account(
         username=request.username,
-        include_tweets=request.include_tweets,
         include_following=request.include_following,
         include_followers=request.include_followers,
     )
