@@ -1,4 +1,4 @@
-# OpenUniverse - Open Crypto Community Profiler
+# OpenUniverse
 
 A graph-based Twitter/X account analysis tool for tracking accounts, their networks, and keyword-based sentiment analysis.
 
