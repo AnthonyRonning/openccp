@@ -1,39 +1,43 @@
 # OpenUniverse
 
-A graph-based Twitter/X account analysis tool for tracking accounts, their networks, and keyword-based sentiment analysis.
-
-## Project Goals
-
-Build a tool that allows users to:
-
-1. **Add seed accounts** - Manually input Twitter handles to track
-2. **Expand networks** - Automatically pull followers/following (1 level deep) to discover related accounts
-3. **Analyze content** - Track keywords (inclusion and exclusion) across tweets
-4. **Visualize relationships** - Graph view of account networks + list view for detailed exploration
-5. **Drill down** - Click into any account to see their profile, tweets, and keyword matches
+A Twitter/X analysis tool for exploring accounts, topics, and networks.
 
 ## Features
 
-### MVP (Hackathon - 24 hours)
+### Tweet Firehose
+Browse and search through collected tweets with filtering and sorting options. View tweet engagement metrics, authors, and link directly to X.
 
-- [ ] Add Twitter handle as a "seed" account
-- [ ] Scrape profile data (bio, metrics, etc.)
-- [ ] Fetch recent tweets (configurable cap)
-- [ ] Fetch followers/following (configurable cap, 1 level deep)
-- [ ] Store all data in PostgreSQL
-- [ ] Keyword configuration (inclusion/exclusion terms)
-- [ ] Keyword matching against tweets
-- [ ] List view of all accounts with labels
-- [ ] Account detail view (profile + tweets + keyword matches)
-- [ ] Basic graph visualization
+### Topic Analysis
+Search for any topic and analyze the discourse:
+- Find top tweets about a topic using Grok's x_search
+- Define two "sides" of a debate and classify tweets
+- Save reports for later reference
 
-### Future
+### Account Analysis
+Deep-dive into any Twitter account:
+- **AI Topic Summary**: Analyze an account's positions across configurable topics
+- **Freeform Prompts**: Ask any question about an account (powered by Grok with x_search)
+- View followers/following with sorting by followers count or recency
+- Browse account tweets sorted by engagement or date
+- All reports can be saved and viewed later
 
-- [ ] Time-series tracking (profile changes, new tweets over time)
-- [ ] Remove caps, implement proper rate limiting
-- [ ] AI assistant with tool-calling for natural language queries
+### Network Graph
+Interactive visualization of account relationships:
+- See follower/following connections between accounts
+- Zoom into account-specific subgraphs
+
+### Chrome Extension
+Crowdsource tweets as you browse Twitter/X - completely free, no API costs:
+- Captures tweets automatically while you browse
+- Batches and sends to the database
+- Automatic deduplication
+
+## Future Ideas
+
+- [ ] Time-series tracking (profile changes over time)
 - [ ] Advanced sentiment analysis
 - [ ] Export/reporting features
+- [ ] AI assistant with natural language queries
 
 ## Tech Stack
 
